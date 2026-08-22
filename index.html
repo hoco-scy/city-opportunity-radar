@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="选择北京、上海、广州或深圳的匿名岗位信息站。" />
+    <title>城市求职雷达</title>
+    <link rel="stylesheet" href="styles.css?v=20260822-1830" />
+    <script src="app.js?v=20260822-1830" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <a class="brand" href="index.html" aria-label="城市求职雷达首页"><span>◎</span><strong>城市求职雷达</strong></a>
+      <section class="hero">
+        <p class="eyebrow">岗位信息入口</p>
+        <h1>先选城市，<br /><em>再看具体岗位</em></h1>
+        <p>北京、上海、广州和深圳分别独立更新。四个站点使用同一套匿名发布、官网核验和岗位质量规则，重点面向生物医学工程及相近工科背景的硕士。</p>
+      </section>
+
+      <section class="chooser" aria-labelledby="chooser-title">
+        <div class="section-heading"><div><p class="eyebrow">选择关注范围</p><h2 id="chooser-title">想先看哪个城市？</h2></div><label>快速跳转 <select id="city-select" aria-label="选择城市"><option value="">选择城市</option><option value="beijing">北京</option><option value="shanghai">上海</option><option value="guangzhou">广州</option><option value="shenzhen">深圳</option></select></label></div>
+        <div class="city-grid">
+          <a class="city-card beijing" href="https://hoco-scy.github.io/beijing-opportunity-radar/"><span>01</span><h3>北京</h3><p>国考、京考、选调优培、事业单位与央国企岗位。</p><b>进入北京站 →</b></a>
+          <a class="city-card shanghai" href="https://hoco-scy.github.io/shanghai-opportunity-radar/"><span>02</span><h3>上海</h3><p>国考、沪考、事业单位与在沪央国企岗位。</p><b>进入上海站 →</b></a>
+          <a class="city-card guangzhou" href="https://hoco-scy.github.io/guangzhou-opportunity-radar/"><span>03</span><h3>广州</h3><p>国考、粤考、事业单位与在穗央国企岗位。</p><b>进入广州站 →</b></a>
+          <a class="city-card shenzhen" href="https://hoco-scy.github.io/shenzhen-opportunity-radar/"><span>04</span><h3>深圳</h3><p>国考、粤考、事业单位与在深央国企岗位。</p><b>进入深圳站 →</b></a>
+        </div>
+      </section>
+
+      <section class="rules" aria-label="站点共同规则">
+        <article><strong>具体岗位</strong><p>不把整场招聘当作岗位；每条进入岗位页的信息都要能定位到岗位名称或代码。</p></article>
+        <article><strong>官网核验</strong><p>搜索和平台内容只用来发现线索，公开信息必须能回到政府或招聘单位官网。</p></article>
+        <article><strong>匿名筛选</strong><p>私有资格档案只用于判断报考条件，四个公开站点不会展示或保存个人身份信息。</p></article>
+      </section>
+    </main>
+    <footer>城市求职雷达 · 报名或投递前请再以招聘单位官网为准。</footer>
+  </body>
+</html>
