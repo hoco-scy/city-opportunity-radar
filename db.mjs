@@ -304,6 +304,7 @@ const collectionMethodLabels = {
   "public-filterable-list": "公开筛选列表与公告详情核验",
   "script-buaa-public-filtered-discovery": "北航公开筛选脚本（待用户确认线索）",
   "script-iguopin-public-filtered-discovery": "国聘公开筛选脚本（待用户确认线索）",
+  "script-ncss-public-filtered-discovery": "国家大学生就业服务平台公开筛选脚本（待用户确认线索）",
   "browser-platform-native-filter": "平台原生筛选与官方原文回溯",
   "unconfigured-route": "尚未配置自动采集路线",
 };

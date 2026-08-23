@@ -91,6 +91,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.match(beijingSelection.collectionEntryUrl, /^https:\/\/career\.buaa\.edu\.cn\//);
   assert.equal(collection.body.sources.find((item) => item.id === "buaa-career-discovery")?.collectionMethod, "北航公开筛选脚本（待用户确认线索）");
   assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "国聘公开筛选脚本（待用户确认线索）");
+  assert.equal(collection.body.sources.find((item) => item.id === "national-college-employment")?.collectionMethod, "国家大学生就业服务平台公开筛选脚本（待用户确认线索）");
   for (const cityId of ["shanghai", "guangzhou", "shenzhen"]) {
     const cityCollection = await request(base, `/api/cities/${cityId}/sources?view=collection`);
     const selection = cityCollection.body.sources.find((item) => item.id === `${cityId}-selection-program`);
@@ -102,8 +103,8 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.ok(collection.body.sources.every((item) => item.latestCheck?.collectionMetrics));
   for (const item of collection.body.sources) {
     const metrics = item.latestCheck.collectionMetrics;
-    assert.ok(["completed", "not-completed", "unavailable"].includes(metrics.state));
-    if (metrics.state === "completed") {
+    assert.ok(["completed", "partial", "not-completed", "unavailable"].includes(metrics.state));
+    if (["completed", "partial"].includes(metrics.state)) {
       assert.ok(Number.isInteger(metrics.collected) && metrics.collected >= 0);
       assert.ok(Number.isInteger(metrics.afterFilter) && metrics.afterFilter >= 0 && metrics.afterFilter <= metrics.collected);
     } else {

@@ -102,7 +102,7 @@ function sourceCard(item) {
     const metrics = item.latestCheck?.collectionMetrics;
     const counts = !metrics
       ? "本轮未记录采集数量"
-      : metrics.state === "completed"
+      : ["completed", "partial"].includes(metrics.state)
         ? `本轮采集 ${metrics.collected} 条 → 筛选后 ${metrics.afterFilter} 条`
         : "本轮未完成原生采集，不能按 0 条理解";
     const countNote = metrics?.filterDescription ? `<p class="collection-note">${escapeHtml(metrics.filterDescription)}</p>` : "";
