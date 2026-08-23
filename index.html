@@ -3,40 +3,101 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="梦琳求职雷达：选择北京、上海、广州或深圳的岗位信息站。" />
+    <meta name="description" content="梦琳求职雷达：北京、上海、广州、深圳的已核验具体岗位。" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>梦琳求职雷达</title>
-    <link rel="stylesheet" href="styles.css?v=20260822-1900" />
-    <script src="app.js?v=20260822-1830" defer></script>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
   </head>
   <body>
-    <main class="shell">
-      <a class="brand" href="index.html" aria-label="梦琳求职雷达首页"><span>◎</span><strong>梦琳求职雷达</strong></a>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="梦琳求职雷达首页"><span>◎</span><strong>梦琳求职雷达</strong></a>
+      <nav aria-label="主导航"><a href="#jobs">岗位</a><a href="#announcements">考试公告</a><a href="#sources">信息源</a><a href="#updates">更新记录</a></nav>
+      <button class="saved-trigger" id="show-favorites" type="button">我的收藏 <b id="favorite-count">0</b></button>
+    </header>
+
+    <main id="top" class="shell">
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">岗位信息入口</p>
-          <h1>先选城市，<br /><em>再看具体岗位</em></h1>
-          <p>北京、上海、广州和深圳分别独立更新。四个站点使用同一套匿名发布、官网核验和岗位质量规则，重点面向生物医学工程及相近工科背景的硕士。</p>
+          <p class="eyebrow">已核验的具体岗位</p>
+          <h1>不用在不同城市之间<br /><em>来回找入口。</em></h1>
+          <p>北京、上海、广州和深圳的岗位、公告、信息源与更新记录现在汇总在同一处。页面只展示能回到官方公告或招聘系统的公开信息。</p>
           <p class="hero-cheer">梦琳一定可以上岸！</p>
         </div>
         <figure class="mascot"><img src="assets/yier-bubu-authorized.jpeg" alt="一二和布布形象：一只小熊和一只小熊猫并肩站在一起" /></figure>
       </section>
 
-      <section class="chooser" aria-labelledby="chooser-title">
-        <div class="section-heading"><div><p class="eyebrow">选择关注范围</p><h2 id="chooser-title">想先看哪个城市？</h2></div><label>快速跳转 <select id="city-select" aria-label="选择城市"><option value="">选择城市</option><option value="beijing">北京</option><option value="shanghai">上海</option><option value="guangzhou">广州</option><option value="shenzhen">深圳</option></select></label></div>
-        <div class="city-grid">
-          <a class="city-card beijing" href="https://hoco-scy.github.io/beijing-opportunity-radar/"><span>01</span><h3>北京</h3><p>国考、京考、选调优培、事业单位与央国企岗位。</p><b>进入北京站 →</b></a>
-          <a class="city-card shanghai" href="https://hoco-scy.github.io/shanghai-opportunity-radar/"><span>02</span><h3>上海</h3><p>国考、沪考、事业单位与在沪央国企岗位。</p><b>进入上海站 →</b></a>
-          <a class="city-card guangzhou" href="https://hoco-scy.github.io/guangzhou-opportunity-radar/"><span>03</span><h3>广州</h3><p>国考、粤考、事业单位与在穗央国企岗位。</p><b>进入广州站 →</b></a>
-          <a class="city-card shenzhen" href="https://hoco-scy.github.io/shenzhen-opportunity-radar/"><span>04</span><h3>深圳</h3><p>国考、粤考、事业单位与在深央国企岗位。</p><b>进入深圳站 →</b></a>
-        </div>
+      <section class="city-switcher" aria-labelledby="city-title">
+        <div><p class="eyebrow">选择关注范围</p><h2 id="city-title">先看哪个城市？</h2></div>
+        <div class="city-tabs" id="city-tabs" role="tablist" aria-label="选择城市"></div>
       </section>
 
-      <section class="rules" aria-label="站点共同规则">
-        <article><strong>具体岗位</strong><p>不把整场招聘当作岗位；每条进入岗位页的信息都要能定位到岗位名称或代码。</p></article>
-        <article><strong>官网核验</strong><p>搜索和平台内容只用来发现线索，公开信息必须能回到政府或招聘单位官网。</p></article>
-        <article><strong>匿名筛选</strong><p>私有资格档案只用于判断报考条件，四个公开站点不会展示或保存个人身份信息。</p></article>
+      <section class="dashboard" id="jobs" aria-live="polite">
+        <div class="main-column">
+          <div class="section-heading">
+            <div><p class="eyebrow" id="current-city-label">机会清单</p><h2 id="job-heading">已核验岗位</h2></div>
+            <span class="last-updated" id="last-updated">正在读取更新记录…</span>
+          </div>
+          <div class="toolbar">
+            <div class="filter-tabs" id="track-tabs" role="group" aria-label="按赛道筛选">
+              <button class="active" data-track="全部" type="button">全部</button>
+              <button data-track="考公" type="button">考公</button>
+              <button data-track="选调优培" type="button">选调优培</button>
+              <button data-track="央国企" type="button">央国企</button>
+              <button data-track="事业单位" type="button">事业单位</button>
+            </div>
+            <label class="search-box"><span aria-hidden="true">⌕</span><input id="search" aria-label="搜索岗位、单位或关键词" placeholder="搜索岗位、单位或关键词" /></label>
+          </div>
+          <div class="opportunity-list" id="opportunity-list"><p class="loading">正在读取公开岗位…</p></div>
+        </div>
+
+        <aside class="side-column">
+          <section class="favorite-card">
+            <p class="eyebrow">跨设备收藏</p>
+            <h2>收藏不再只留在一台设备里</h2>
+            <p>用一枚仅你知道的收藏代码同步。服务器只保存代码摘要与岗位 ID，不保存个人资料。</p>
+            <button class="outline-button" id="manage-code" type="button">查看或输入收藏代码</button>
+          </section>
+          <section class="source-summary">
+            <p class="eyebrow">筛选方式</p>
+            <h2>面向生物医学相关背景的硕士</h2>
+            <p>优先纳入生物医学工程及相近工科可报的应届岗位；纯计算机岗位不会因为热门而列为高匹配。最终报考、投递仍以岗位原文为准。</p>
+          </section>
+        </aside>
+      </section>
+
+      <section class="announcements-section" id="announcements">
+        <div class="section-heading"><div><p class="eyebrow">考试公告</p><h2 id="announcement-heading">报名窗口与公告监测</h2></div></div>
+        <p class="source-intro">公告还没有拆出可报的具体岗位时，会单独放在这里；一旦职位表发布并完成核验，才进入上方岗位清单。</p>
+        <div class="announcement-list" id="announcement-list"><p class="loading">正在读取考试公告…</p></div>
+      </section>
+
+      <section class="sources-section" id="sources">
+        <div class="section-heading"><div><p class="eyebrow">信息源</p><h2>打开入口，和我们采集信息，是两件事</h2></div></div>
+        <p class="source-intro">“官方快捷入口”方便你自己查看；“采集与核验路线”说明后台本轮通过哪里获取公开信息。两者不会混在同一张卡片上。</p>
+        <div class="source-view-tabs" role="tablist" aria-label="信息源展示方式">
+          <button class="active" data-source-view="shortcut" role="tab" aria-selected="true" type="button">官方快捷入口</button>
+          <button data-source-view="collection" role="tab" aria-selected="false" type="button">采集与核验路线</button>
+        </div>
+        <div class="source-grid" id="source-list"><p class="loading">正在读取信息源…</p></div>
+      </section>
+
+      <section class="updates-section" id="updates">
+        <div class="section-heading"><div><p class="eyebrow">更新记录</p><h2>每一次公开更新都有留痕</h2></div></div>
+        <div class="update-list" id="update-list"><p class="loading">正在读取更新记录…</p></div>
       </section>
     </main>
-    <footer>梦琳求职雷达 · 报名或投递前请再以招聘单位官网为准。</footer>
+
+    <dialog id="favorite-dialog" class="favorite-dialog" aria-labelledby="favorite-dialog-title">
+      <form method="dialog" class="dialog-close"><button aria-label="关闭" type="submit">×</button></form>
+      <p class="eyebrow">跨设备收藏</p>
+      <h2 id="favorite-dialog-title">收藏代码</h2>
+      <p>这串代码相当于收藏的钥匙。复制并保存在可信的位置；换设备时输入相同代码即可同步。</p>
+      <label for="favorite-code">收藏代码</label>
+      <input id="favorite-code" autocomplete="off" spellcheck="false" />
+      <div class="dialog-actions"><button class="primary-button" id="copy-code" type="button">复制代码</button><button class="outline-button" id="save-code" type="button">使用这串代码</button></div>
+      <p class="dialog-note" id="code-feedback" aria-live="polite"></p>
+    </dialog>
+    <footer>梦琳求职雷达 · 公开岗位信息仅供辅助筛选，报名或投递前请以单位官网为准。</footer>
   </body>
 </html>

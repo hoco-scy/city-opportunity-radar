@@ -1,0 +1,17 @@
+{
+  "name": "menglin-opportunity-radar-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "db:import:legacy": "node scripts/import-legacy-cities.mjs",
+    "test": "node --test tests/server.test.mjs",
+    "check:privacy": "node scripts/check-privacy.mjs",
+    "check": "npm run check:privacy && npm test"
+  }
+}
