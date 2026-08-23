@@ -99,8 +99,15 @@ function sourceCard(item) {
     const latest = item.latestCheck
       ? `<p class="check-note">${item.latestCheck.isCurrent ? "最近已核验" : "最近一轮未覆盖"}：${escapeHtml(dateLabel(item.latestCheck.checkedAt))}</p>`
       : "<p class=\"check-note\">尚无公开核验记录</p>";
+    const metrics = item.latestCheck?.collectionMetrics;
+    const counts = !metrics
+      ? "本轮未记录采集数量"
+      : metrics.state === "completed"
+        ? `本轮采集 ${metrics.collected} 条 → 筛选后 ${metrics.afterFilter} 条`
+        : "本轮未完成原生采集，不能按 0 条理解";
+    const countNote = metrics?.filterDescription ? `<p class="collection-note">${escapeHtml(metrics.filterDescription)}</p>` : "";
     const note = item.collectionNote ? `<p class="collection-note">${escapeHtml(item.collectionNote)}</p>` : "";
-    return `<article class="source-card collection-card"><p class="source-kind">采集与核验路线</p><h3>${escapeHtml(item.organization)}</h3><p>${escapeHtml(item.collectionMethod)}</p><p class="coverage">${item.coverage.map(escapeHtml).join(" · ")}</p>${note}${latest}<a href="${escapeHtml(item.collectionEntryUrl)}" target="_blank" rel="noreferrer">查看采集入口 ↗</a></article>`;
+    return `<article class="source-card collection-card"><p class="source-kind">采集与核验路线</p><h3>${escapeHtml(item.organization)}</h3><p>${escapeHtml(item.collectionMethod)}</p><p class="coverage">${item.coverage.map(escapeHtml).join(" · ")}</p>${note}${latest}<p class="check-note"><strong>${escapeHtml(counts)}</strong></p>${countNote}<a href="${escapeHtml(item.collectionEntryUrl)}" target="_blank" rel="noreferrer">查看采集入口 ↗</a></article>`;
   }
   return `<article class="source-card"><p class="source-kind">官方快捷入口</p><h3>${escapeHtml(item.organization)}</h3><p>${escapeHtml(item.type || "官方来源")}</p><p class="coverage">${item.coverage.map(escapeHtml).join(" · ")}</p><p class="check-note">不显示采集状态</p><a href="${escapeHtml(item.entryUrl)}" target="_blank" rel="noreferrer">打开官网 ↗</a></article>`;
 }

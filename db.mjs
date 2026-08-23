@@ -305,6 +305,7 @@ const collectionMethodLabels = {
   "script-buaa-public-filtered-discovery": "北航公开筛选脚本（待用户确认线索）",
   "script-iguopin-public-filtered-discovery": "国聘公开筛选脚本（待用户确认线索）",
   "browser-platform-native-filter": "平台原生筛选与官方原文回溯",
+  "unconfigured-route": "尚未配置自动采集路线",
 };
 
 export function listCities(db) {
@@ -361,8 +362,7 @@ export function listSources(db, cityId, view = "shortcut") {
     // collection, otherwise the two source views communicate different rules.
     if (source.monitoringEnabled === false) return null;
     if (view === "collection") {
-      const accessMode = source.collectionAccessMode ?? source.accessMode;
-      if (!accessMode) return null;
+      const accessMode = source.collectionAccessMode ?? source.accessMode ?? "unconfigured-route";
       return {
         id: source.id,
         // A source can have two deliberately different identities: the
@@ -380,6 +380,7 @@ export function listSources(db, cityId, view = "shortcut") {
         latestCheck: check ? {
           checkedAt: check.checkedAt,
           isCurrent: check.checkedAt === latestRun?.checked_at,
+          collectionMetrics: check.collectionMetrics ?? null,
         } : null,
       };
     }

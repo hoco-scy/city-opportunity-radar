@@ -99,6 +99,18 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   }
   assert.ok(collection.body.sources.some((item) => item.latestCheck));
   assert.ok(collection.body.sources.some((item) => item.latestCheck?.isCurrent));
+  assert.ok(collection.body.sources.every((item) => item.latestCheck?.collectionMetrics));
+  for (const item of collection.body.sources) {
+    const metrics = item.latestCheck.collectionMetrics;
+    assert.ok(["completed", "not-completed", "unavailable"].includes(metrics.state));
+    if (metrics.state === "completed") {
+      assert.ok(Number.isInteger(metrics.collected) && metrics.collected >= 0);
+      assert.ok(Number.isInteger(metrics.afterFilter) && metrics.afterFilter >= 0 && metrics.afterFilter <= metrics.collected);
+    } else {
+      assert.equal(metrics.collected, null);
+      assert.equal(metrics.afterFilter, null);
+    }
+  }
   assert.ok(!collection.body.sources.some((item) => item.id === "chinatelecom-careers"));
 
   const denied = await request(base, "/api/favorites");
