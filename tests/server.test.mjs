@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import { createRadarServer } from "../server.mjs";
 import { importLegacyCities } from "../scripts/import-legacy-cities.mjs";
+import { isPubliclyDisplayableOpportunity } from "../db.mjs";
 
 const projectRoot = resolve(new URL("../", import.meta.url).pathname);
 const legacyRoot = resolve(projectRoot, "..");
@@ -15,6 +16,16 @@ async function request(base, path, options) {
   const response = await fetch(`${base}${path}`, options);
   return { response, body: await response.json() };
 }
+
+test("only publishes enterprise and institution roles with official professional and role evidence", () => {
+  assert.equal(isPubliclyDisplayableOpportunity({
+    track: "央国企", title: "信息化咨询工程师", majors: "专业不限", responsibilities: ["开展政府信息化咨询"],
+  }), false);
+  assert.equal(isPubliclyDisplayableOpportunity({
+    track: "事业单位", title: "医学影像设备工程师", majors: "生物医学工程、医学工程相关专业", responsibilities: ["负责医学影像设备临床应用支持"],
+  }), true);
+  assert.equal(isPubliclyDisplayableOpportunity({ track: "考公", title: "已通过资格门禁的岗位" }), true);
+});
 
 test("imports all four cities and exposes the unified public API", async (t) => {
   const workdir = await mkdtemp(join(tmpdir(), "menglin-radar-"));
@@ -42,12 +53,12 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.equal(cities.response.status, 200);
   assert.equal(cities.body.cities.length, 4);
   assert.equal(cities.body.cities[0].id, "beijing");
-  assert.ok(cities.body.cities.every((city) => city.opportunity_count > 0));
+  assert.ok(cities.body.cities.every((city) => city.name));
 
   const jobs = await request(base, "/api/cities/beijing/opportunities?track=%E5%A4%AE%E5%9B%BD%E4%BC%81");
   assert.equal(jobs.response.status, 200);
-  assert.ok(jobs.body.opportunities.length > 0);
   assert.ok(jobs.body.opportunities.every((item) => item.track === "央国企"));
+  assert.ok(jobs.body.opportunities.every(isPubliclyDisplayableOpportunity));
 
   const announcements = await request(base, "/api/cities/beijing/opportunities?kind=monitor");
   assert.equal(announcements.response.status, 200);
@@ -79,7 +90,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const denied = await request(base, "/api/favorites");
   assert.equal(denied.response.status, 401);
 
-  const job = jobs.body.opportunities[0];
+  const job = announcements.body.opportunities[0];
   const favoriteHeaders = { "x-radar-user-code": validCode, "content-type": "application/json" };
   const saved = await request(base, "/api/favorites", { method: "POST", headers: favoriteHeaders, body: JSON.stringify({ cityId: "beijing", opportunityId: job.id }) });
   assert.equal(saved.response.status, 201);

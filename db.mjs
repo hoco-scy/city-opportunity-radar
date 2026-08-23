@@ -102,6 +102,29 @@ const schema = `
 const forbiddenField = /^(candidateName|fullName|phone|email|birthDate|homeAddress|schoolName|studentId|idCard|portrait|avatar)$/i;
 const phonePattern = /(?<!\d)1[3-9]\d{9}(?!\d)/;
 const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+// Public job cards are intentionally stricter than discovery.  A company
+// name, an open-major statement, or generic engineering experience is not a
+// substitute for evidence that both the profession and the work itself fit
+// the public biomedical-engineering scope.
+const biomedicalQualificationPattern = /(生物医学工程|生物医工|医学工程|医疗器械工程|临床工程|医疗电子|医学影像(?:工程|技术)?|生物工程)/;
+const broadEngineeringPattern = /(?:工学(?:门类)?|工程类|理工(?:科)?类|仪器(?:科学)?与技术)/;
+const biomedicalRolePattern = /(医疗器械|医学影像|生物信号|临床工程|医疗电子|体外诊断|智慧医疗|医疗健康|临床数据|医学数据|数字医疗|生物医药|生命科学|健康科技)/;
+
+function itemText(item, fields) {
+  return fields.flatMap((field) => Array.isArray(item[field]) ? item[field] : [item[field]])
+    .filter(Boolean).join(" ");
+}
+
+export function isPubliclyDisplayableOpportunity(item) {
+  if (!["央国企", "事业单位"].includes(item.track)) return true;
+  const qualification = itemText(item, ["majors", "requirements", "education"]);
+  const role = itemText(item, ["title", "exactTitle", "responsibilities", "tags", "organization"]);
+  // Exact related-major evidence is sufficient only when the actual role has
+  // an adjacent biomedical/health scenario.  A broad engineering allowance
+  // is sufficient only together with the same scenario evidence.
+  const hasRoleBridge = biomedicalRolePattern.test(role);
+  return hasRoleBridge && (biomedicalQualificationPattern.test(qualification) || broadEngineeringPattern.test(qualification));
+}
 
 export function defaultDatabasePath(root = process.cwd()) {
   return resolve(root, ".data", "menglin-opportunity-radar.sqlite");
@@ -224,6 +247,7 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
 
     for (const [recordType, items] of [["job", opportunities.jobs ?? []], ["monitor", opportunities.monitors ?? []]]) {
       for (const item of items) {
+        if (recordType === "job" && !isPubliclyDisplayableOpportunity(item)) continue;
         const row = opportunityRow(cityId, item, recordType);
         insertOpportunity.run(
           row.cityId, row.opportunityId, row.recordType, row.track, row.organization, row.title, row.exactTitle,
