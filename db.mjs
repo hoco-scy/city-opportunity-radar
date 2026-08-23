@@ -291,7 +291,7 @@ function parsePayload(row) {
 }
 
 const collectionMethodLabels = {
-  "browser-spa": "官网专题与附件核验",
+  "browser-spa": "官网原生筛选与岗位详情核验",
   "script-official-university-announcement-api": "北航就业网公开栏目、公告详情与附件核验",
   "server-rendered-list": "官网列表筛选与分页核验",
   "desktop-with-mobile-fallback": "官网招聘页与备用入口核验",
