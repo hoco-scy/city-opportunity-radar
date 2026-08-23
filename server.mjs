@@ -107,11 +107,12 @@ async function handleApi(req, res, url, db) {
   const [, cityId, resource] = match;
   if (!cityExists(db, cityId)) return sendError(res, 404, "未找到该城市");
   if (resource === "opportunities") {
+    const kind = searchParams.get("kind");
     return sendJson(res, 200, {
       opportunities: listOpportunities(db, cityId, {
         track: searchParams.get("track"),
         q: searchParams.get("q"),
-        recordType: searchParams.get("kind") === "monitor" ? "monitor" : "job",
+        recordType: ["monitor", "candidate"].includes(kind) ? kind : "job",
       }),
     });
   }

@@ -245,7 +245,7 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
     deleteSources.run(cityId);
     deleteOpportunities.run(cityId);
 
-    for (const [recordType, items] of [["job", opportunities.jobs ?? []], ["monitor", opportunities.monitors ?? []]]) {
+    for (const [recordType, items] of [["job", opportunities.jobs ?? []], ["candidate", opportunities.candidates ?? []], ["monitor", opportunities.monitors ?? []]]) {
       for (const item of items) {
         if (recordType === "job" && !isPubliclyDisplayableOpportunity(item)) continue;
         const row = opportunityRow(cityId, item, recordType);
@@ -302,15 +302,15 @@ const collectionMethodLabels = {
   "browser-antibot": "官网招聘入口人工浏览核验",
   "official-announcement-discovery": "官方公告发现与原文回溯",
   "public-filterable-list": "公开筛选列表与公告详情核验",
-  "script-buaa-public-filtered-discovery": "北航公开筛选脚本（线索待回溯）",
-  "script-iguopin-public-filtered-discovery": "国聘公开筛选脚本（线索待回溯）",
+  "script-buaa-public-filtered-discovery": "北航公开筛选脚本（待用户确认线索）",
+  "script-iguopin-public-filtered-discovery": "国聘公开筛选脚本（待用户确认线索）",
   "browser-platform-native-filter": "平台原生筛选与官方原文回溯",
 };
 
 export function listCities(db) {
   return db.prepare(`
     SELECT c.id, c.name, c.accent, c.description, c.updated_at,
-      (SELECT COUNT(*) FROM opportunities o WHERE o.city_id = c.id) AS opportunity_count,
+      (SELECT COUNT(*) FROM opportunities o WHERE o.city_id = c.id AND o.record_type = 'job') AS opportunity_count,
       (SELECT MAX(checked_at) FROM sync_runs r WHERE r.city_id = c.id) AS last_checked_at
     FROM cities c
     ORDER BY CASE c.id

@@ -4,6 +4,7 @@ const state = {
   cities: [],
   cityId: localStorage.getItem("menglin-radar-city") || "beijing",
   track: initialQuery.get("favorites") === "1" ? "我的收藏" : "全部",
+  recordKind: initialQuery.get("view") === "candidates" ? "candidate" : "job",
   query: "",
   sourceView: "shortcut",
   favorites: new Set(),
@@ -64,7 +65,10 @@ function renderJobs(opportunities) {
   const filtered = state.track === "我的收藏"
     ? opportunities.filter((item) => state.favorites.has(favoriteKey(state.cityId, item.id)))
     : opportunities;
-  list.innerHTML = filtered.length ? filtered.map(jobCard).join("") : `<div class="empty-state"><strong>${state.track === "我的收藏" ? "还没有收藏岗位" : "没有符合当前条件的公开岗位"}</strong><p>${state.track === "我的收藏" ? "点击岗位右上角的心形按钮，收藏会自动同步到这串收藏代码。" : "换一个赛道或关键词看看。"}</p></div>`;
+  const isCandidate = state.recordKind === "candidate";
+  const emptyTitle = state.track === "我的收藏" ? "还没有收藏岗位" : isCandidate ? "没有待确认线索" : "没有符合当前条件的公开岗位";
+  const emptyNote = state.track === "我的收藏" ? "点击岗位右上角的心形按钮，收藏会自动同步到这串收藏代码。" : isCandidate ? "下一轮筛选发现的平台线索会在这里出现。" : "换一个赛道或关键词看看。";
+  list.innerHTML = filtered.length ? filtered.map(isCandidate ? candidateCard : jobCard).join("") : `<div class="empty-state"><strong>${emptyTitle}</strong><p>${emptyNote}</p></div>`;
   document.querySelectorAll("[data-save]").forEach((button) => button.addEventListener("click", () => toggleFavorite(button.dataset.save)));
 }
 
@@ -73,6 +77,14 @@ function jobCard(item) {
   const tags = (item.tags || []).slice(0, 6).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
   const applicationUrl = item.officialApplyUrl || item.officialAnnouncementUrl;
   return `<article class="opportunity-card"><div class="card-accent" data-track="${escapeHtml(item.track)}"></div><div class="card-content"><div class="card-topline"><span class="track-tag track-${escapeHtml(item.track)}">${escapeHtml(item.track)}</span><span class="official-tag">已核验</span><button class="save-button ${saved ? "saved" : ""}" data-save="${escapeHtml(item.id)}" aria-label="${saved ? "取消收藏" : "收藏"} ${escapeHtml(item.exactTitle || item.title)}" type="button">${saved ? "♥" : "♡"}</button></div><div class="card-title-row"><div><h3>${escapeHtml(item.exactTitle || item.title)}</h3><p>${escapeHtml(item.organization)} · ${escapeHtml(item.location || "地点以官网为准")}</p></div><div class="match-score"><strong>${escapeHtml(item.priority ?? "—")}</strong><span>关注度</span></div></div><p class="match-reason">${escapeHtml(item.matchReason || "已回到官方岗位页核验关键信息。")}</p><div class="tag-row">${tags}</div><div class="card-footer"><div><span class="status-pill">${escapeHtml(item.status || "以官网为准")}</span><span class="deadline">${escapeHtml(item.deadline || "截止时间以官网为准")}</span><span class="verified-date">核验 ${escapeHtml(item.verifiedAt || "")}</span></div>${applicationUrl ? `<a href="${escapeHtml(applicationUrl)}" target="_blank" rel="noreferrer">官方岗位页 ↗</a>` : ""}</div></div></article>`;
+}
+
+function candidateCard(item) {
+  const saved = state.favorites.has(favoriteKey(state.cityId, item.id));
+  const tags = (item.tags || []).slice(0, 6).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+  const sourceUrl = item.sourceUrl || item.officialAnnouncementUrl;
+  const directUrl = item.officialApplyUrl && item.officialApplyUrl !== sourceUrl ? item.officialApplyUrl : null;
+  return `<article class="opportunity-card"><div class="card-accent" data-track="待确认线索"></div><div class="card-content"><div class="card-topline"><span class="track-tag track-待确认线索">待确认线索</span><span class="official-tag candidate-tag">已初筛 · 未作官方发布</span><button class="save-button ${saved ? "saved" : ""}" data-save="${escapeHtml(item.id)}" aria-label="${saved ? "取消收藏" : "收藏"} ${escapeHtml(item.exactTitle || item.title)}" type="button">${saved ? "♥" : "♡"}</button></div><div class="card-title-row"><div><h3>${escapeHtml(item.exactTitle || item.title)}</h3><p>${escapeHtml(item.organization)} · ${escapeHtml(item.location || "地点以平台为准")}</p></div><div class="match-score"><strong>${escapeHtml(item.priority ?? "—")}</strong><span>初筛关注度</span></div></div><p class="match-reason">${escapeHtml(item.manualConfirmationReason || item.matchReason || "请先在平台原页和单位官网核对岗位条件。")}</p><div class="tag-row">${tags}</div><div class="card-footer"><div><span class="status-pill">${escapeHtml(item.status || "待用户确认")}</span><span class="deadline">${escapeHtml(item.deadline || "截止时间以平台为准")}</span><span class="verified-date">初筛 ${escapeHtml(item.verifiedAt || "")}</span></div><div>${sourceUrl ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer">查看平台原页 ↗</a>` : ""}${directUrl ? `<a href="${escapeHtml(directUrl)}" target="_blank" rel="noreferrer">平台提供的投递链接 ↗</a>` : ""}</div></div></div></article>`;
 }
 
 function renderAnnouncements(announcements) {
@@ -106,10 +118,13 @@ async function loadPageData() {
   if (!city) return;
   updateLastChecked(city);
   if (page === "jobs") {
-    byId("current-city-label").textContent = `${city.name} · 已核验信息`;
-    byId("job-heading").textContent = `${city.name}的具体岗位`;
+    const isCandidate = state.recordKind === "candidate";
+    byId("current-city-label").textContent = `${city.name} · ${isCandidate ? "平台初筛线索" : "已核验信息"}`;
+    byId("job-heading").textContent = `${city.name}${isCandidate ? "的待确认线索" : "的具体岗位"}`;
+    byId("track-tabs").hidden = isCandidate;
     const parameters = new URLSearchParams();
-    if (state.track !== "全部" && state.track !== "我的收藏") parameters.set("track", state.track);
+    if (!isCandidate && state.track !== "全部" && state.track !== "我的收藏") parameters.set("track", state.track);
+    if (isCandidate) parameters.set("kind", "candidate");
     if (state.query.trim()) parameters.set("q", state.query.trim());
     const { opportunities } = await api(`/api/cities/${state.cityId}/opportunities?${parameters}`);
     renderJobs(opportunities);
@@ -154,6 +169,14 @@ async function toggleFavorite(opportunityId) {
 }
 
 function setupJobsPage() {
+  document.querySelectorAll("[data-record-kind]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.recordKind === state.recordKind);
+    button.addEventListener("click", async () => {
+      state.recordKind = button.dataset.recordKind;
+      document.querySelectorAll("[data-record-kind]").forEach((item) => item.classList.toggle("active", item === button));
+      await loadPageData();
+    });
+  });
   document.querySelectorAll("[data-track]").forEach((button) => {
     button.classList.toggle("active", button.dataset.track === state.track);
     button.addEventListener("click", async () => {

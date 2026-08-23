@@ -33,6 +33,7 @@ export async function importLegacyCities({
       summary.push({
         cityId,
         jobs: opportunities.jobs?.length ?? 0,
+        candidates: opportunities.candidates?.length ?? 0,
         monitors: opportunities.monitors?.length ?? 0,
         sources: registry.sources?.length ?? 0,
         runs: reviewLog.runs?.length ?? 0,
@@ -54,5 +55,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     cityIds: city ? [city] : CITY_CATALOG.map((item) => item.id),
   });
   console.log(`已导入 ${summary.length} 个城市的公开数据：`);
-  for (const item of summary) console.log(`- ${item.cityId}：${item.jobs} 个岗位、${item.monitors} 个公告、${item.sources} 个信息源、${item.runs} 次更新记录`);
+  for (const item of summary) console.log(`- ${item.cityId}：${item.jobs} 个已核验岗位、${item.candidates} 条待用户确认线索、${item.monitors} 个公告、${item.sources} 个信息源、${item.runs} 次更新记录`);
 }

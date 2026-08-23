@@ -65,6 +65,11 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.equal(announcements.body.opportunities.length, 5);
   assert.ok(announcements.body.opportunities.every((item) => item.note));
 
+  const candidates = await request(base, "/api/cities/beijing/opportunities?kind=candidate");
+  assert.equal(candidates.response.status, 200);
+  assert.ok(candidates.body.opportunities.every((item) => item.status === "待用户确认"));
+  assert.ok(candidates.body.opportunities.every((item) => item.manualConfirmationRequired === true));
+
   const shortcuts = await request(base, "/api/cities/beijing/sources?view=shortcut");
   assert.ok(shortcuts.body.sources.length > 0);
   assert.ok(shortcuts.body.sources.every((item) => item.entryUrl));
@@ -84,8 +89,8 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const beijingSelection = collection.body.sources.find((item) => item.id === "beijing-selection-program");
   assert.equal(beijingSelection.organization, "北航就业信息网（公务员／选调生）");
   assert.match(beijingSelection.collectionEntryUrl, /^https:\/\/career\.buaa\.edu\.cn\//);
-  assert.equal(collection.body.sources.find((item) => item.id === "buaa-career-discovery")?.collectionMethod, "北航公开筛选脚本（线索待回溯）");
-  assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "国聘公开筛选脚本（线索待回溯）");
+  assert.equal(collection.body.sources.find((item) => item.id === "buaa-career-discovery")?.collectionMethod, "北航公开筛选脚本（待用户确认线索）");
+  assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "国聘公开筛选脚本（待用户确认线索）");
   for (const cityId of ["shanghai", "guangzhou", "shenzhen"]) {
     const cityCollection = await request(base, `/api/cities/${cityId}/sources?view=collection`);
     const selection = cityCollection.body.sources.find((item) => item.id === `${cityId}-selection-program`);
@@ -119,6 +124,6 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const clientScript = await fetch(`${base}/app.js`);
   assert.equal(clientScript.headers.get("cache-control"), "no-cache");
   const homepage = await (await fetch(`${base}/`)).text();
-  assert.match(homepage, /app\.js\?v=20260823\.2/);
-  assert.match(homepage, /sources\.html\?v=20260823\.2/);
+  assert.match(homepage, /app\.js\?v=20260824\.1/);
+  assert.match(homepage, /sources\.html\?v=20260824\.1/);
 });
