@@ -60,8 +60,12 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.ok(shortcuts.body.sources.every((item) => !Object.hasOwn(item, "latestCheck")));
 
   const collection = await request(base, "/api/cities/beijing/sources?view=collection");
+  assert.equal(collection.body.sources.length, 13);
   assert.ok(collection.body.sources.every((item) => item.collectionEntryUrl));
+  assert.ok(collection.body.sources.every((item) => item.collectionMethod));
+  assert.ok(collection.body.sources.every((item) => !/待登记/.test(item.collectionMethod)));
   assert.ok(collection.body.sources.some((item) => item.latestCheck));
+  assert.ok(collection.body.sources.some((item) => item.latestCheck?.isCurrent));
 
   const denied = await request(base, "/api/favorites");
   assert.equal(denied.response.status, 401);

@@ -266,6 +266,20 @@ function parsePayload(row) {
   return JSON.parse(row.payload_json);
 }
 
+const collectionMethodLabels = {
+  "browser-spa": "官网专题与附件核验",
+  "script-official-university-announcement-api": "官方就业网公告与附件核验",
+  "server-rendered-list": "官网列表筛选与分页核验",
+  "desktop-with-mobile-fallback": "官网招聘页与备用入口核验",
+  "browser-official-page": "官网招聘页逐项核验",
+  "filterable-dynamic-list": "官网筛选列表与岗位详情核验",
+  "filterable-paginated-list": "官网筛选、分页与岗位详情核验",
+  "semantic-health-check-required": "官网页面语义与招聘入口核验",
+  "browser-antibot": "官网招聘入口人工浏览核验",
+  "official-announcement-discovery": "官方公告发现与原文回溯",
+  "public-filterable-list": "公开筛选列表与公告详情核验",
+};
+
 export function listCities(db) {
   return db.prepare(`
     SELECT c.id, c.name, c.accent, c.description, c.updated_at,
@@ -302,6 +316,7 @@ export function listOpportunities(db, cityId, { track, q, recordType = "job" } =
 }
 
 export function listSources(db, cityId, view = "shortcut") {
+  const latestRun = db.prepare("SELECT MAX(checked_at) AS checked_at FROM sync_runs WHERE city_id = ?").get(cityId);
   const rows = db.prepare(`
     SELECT s.*, (
       SELECT sc.payload_json FROM source_checks sc
@@ -315,6 +330,8 @@ export function listSources(db, cityId, view = "shortcut") {
     const source = JSON.parse(row.payload_json);
     const check = row.latest_check_json ? JSON.parse(row.latest_check_json) : null;
     if (view === "collection") {
+      const accessMode = source.collectionAccessMode ?? source.accessMode;
+      if (!accessMode) return null;
       return {
         id: source.id,
         organization: source.organization,
@@ -322,9 +339,11 @@ export function listSources(db, cityId, view = "shortcut") {
         tier: source.tier,
         coverage: source.coverage ?? [],
         collectionEntryUrl: source.collectionEntryUrl ?? source.entryUrl,
-        collectionAccessMode: source.collectionAccessMode ?? source.accessMode ?? "待登记",
-        collectionNote: source.collectionNote ?? "按当前采集配方检查官方公开内容。",
-        latestCheck: check ? { status: check.status, checkedAt: check.checkedAt, note: check.note } : null,
+        collectionMethod: collectionMethodLabels[accessMode] ?? "官网公开信息核验",
+        latestCheck: check ? {
+          checkedAt: check.checkedAt,
+          isCurrent: check.checkedAt === latestRun?.checked_at,
+        } : null,
       };
     }
     return {
@@ -336,7 +355,7 @@ export function listSources(db, cityId, view = "shortcut") {
       entryUrl: source.entryUrl,
       alternateEntryUrls: source.alternateEntryUrls ?? [],
     };
-  });
+  }).filter(Boolean);
 }
 
 export function getCityAudit(db, cityId, limit = 10) {

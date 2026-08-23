@@ -84,8 +84,10 @@ function renderAnnouncements(announcements) {
 
 function sourceCard(item) {
   if (state.sourceView === "collection") {
-    const latest = item.latestCheck ? `<p class="check-note">本次核验：${escapeHtml(dateLabel(item.latestCheck.checkedAt))}</p>` : "<p class=\"check-note\">尚无本轮核验记录</p>";
-    return `<article class="source-card collection-card"><p class="source-kind">采集与核验路线</p><h3>${escapeHtml(item.organization)}</h3><p>${escapeHtml(item.collectionAccessMode)}</p><p class="coverage">${item.coverage.map(escapeHtml).join(" · ")}</p>${latest}<a href="${escapeHtml(item.collectionEntryUrl)}" target="_blank" rel="noreferrer">查看采集入口 ↗</a></article>`;
+    const latest = item.latestCheck
+      ? `<p class="check-note">${item.latestCheck.isCurrent ? "最近已核验" : "最近一轮未覆盖"}：${escapeHtml(dateLabel(item.latestCheck.checkedAt))}</p>`
+      : "<p class=\"check-note\">尚无公开核验记录</p>";
+    return `<article class="source-card collection-card"><p class="source-kind">采集与核验路线</p><h3>${escapeHtml(item.organization)}</h3><p>${escapeHtml(item.collectionMethod)}</p><p class="coverage">${item.coverage.map(escapeHtml).join(" · ")}</p>${latest}<a href="${escapeHtml(item.collectionEntryUrl)}" target="_blank" rel="noreferrer">查看采集入口 ↗</a></article>`;
   }
   return `<article class="source-card"><p class="source-kind">官方快捷入口</p><h3>${escapeHtml(item.organization)}</h3><p>${escapeHtml(item.type || "官方来源")}</p><p class="coverage">${item.coverage.map(escapeHtml).join(" · ")}</p><p class="check-note">不显示采集状态</p><a href="${escapeHtml(item.entryUrl)}" target="_blank" rel="noreferrer">打开官网 ↗</a></article>`;
 }
@@ -120,7 +122,7 @@ async function loadPageData() {
   }
   if (page === "sources") {
     byId("source-heading").textContent = state.sourceView === "collection" ? `${city.name}的采集与核验路线` : `${city.name}的官方快捷入口`;
-    byId("source-intro").textContent = state.sourceView === "collection" ? "显示后台本轮获取、筛选与核验公开信息的路线和最近结果。" : "方便直接进入各个官方平台，不显示采集状态。";
+    byId("source-intro").textContent = state.sourceView === "collection" ? "只列出后台已有明确执行方式的来源；只有完成官方核验的信息才会进入岗位或公告页面。" : "方便直接进入各个官方平台，不显示采集状态。";
     const { sources } = await api(`/api/cities/${state.cityId}/sources?view=${state.sourceView}`);
     renderSources(sources);
     return;
