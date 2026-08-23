@@ -355,8 +355,11 @@ export function listSources(db, cityId, view = "shortcut") {
   return rows.map((row) => {
     const source = JSON.parse(row.payload_json);
     const check = row.latest_check_json ? JSON.parse(row.latest_check_json) : null;
+    // A disabled source is intentionally out of the user's scope.  Do not
+    // leave a stale official shortcut visible after it has been removed from
+    // collection, otherwise the two source views communicate different rules.
+    if (source.monitoringEnabled === false) return null;
     if (view === "collection") {
-      if (source.monitoringEnabled === false) return null;
       const accessMode = source.collectionAccessMode ?? source.accessMode;
       if (!accessMode) return null;
       return {

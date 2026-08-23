@@ -66,9 +66,15 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.ok(announcements.body.opportunities.every((item) => item.note));
 
   const shortcuts = await request(base, "/api/cities/beijing/sources?view=shortcut");
-  assert.ok(shortcuts.body.sources.length >= 27);
+  assert.ok(shortcuts.body.sources.length > 0);
   assert.ok(shortcuts.body.sources.every((item) => item.entryUrl));
   assert.ok(shortcuts.body.sources.every((item) => !Object.hasOwn(item, "latestCheck")));
+  for (const sourceId of ["picc-campus", "crc-careers", "casic-careers", "spacechina-careers"]) {
+    assert.ok(shortcuts.body.sources.some((item) => item.id === sourceId));
+  }
+  for (const sourceId of ["cec-campus", "cetc-recruitment", "sgcc-careers", "cnpc-careers", "sinopec-careers", "cmcc-careers", "chinatelecom-careers", "chinapost-recruitment"]) {
+    assert.ok(!shortcuts.body.sources.some((item) => item.id === sourceId));
+  }
 
   const collection = await request(base, "/api/cities/beijing/sources?view=collection");
   assert.ok(collection.body.sources.length > 0);
