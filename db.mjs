@@ -268,7 +268,7 @@ function parsePayload(row) {
 
 const collectionMethodLabels = {
   "browser-spa": "官网专题与附件核验",
-  "script-official-university-announcement-api": "官方就业网公告与附件核验",
+  "script-official-university-announcement-api": "北航就业网公开栏目、公告详情与附件核验",
   "server-rendered-list": "官网列表筛选与分页核验",
   "desktop-with-mobile-fallback": "官网招聘页与备用入口核验",
   "browser-official-page": "官网招聘页逐项核验",
@@ -334,12 +334,18 @@ export function listSources(db, cityId, view = "shortcut") {
       if (!accessMode) return null;
       return {
         id: source.id,
-        organization: source.organization,
-        type: source.type,
+        // A source can have two deliberately different identities: the
+        // government page users open directly and the public route the
+        // collector actually runs.  The collection view must describe the
+        // latter so that it never implies a government shortcut is scanned.
+        organization: source.collectionOrganization ?? source.organization,
+        type: source.collectionType ?? source.type,
         tier: source.tier,
-        coverage: source.coverage ?? [],
+        coverage: source.collectionCoverage ?? source.coverage ?? [],
         collectionEntryUrl: source.collectionEntryUrl ?? source.entryUrl,
         collectionMethod: collectionMethodLabels[accessMode] ?? "官网公开信息核验",
+        collectionNote: source.collectionNote ?? null,
+        shortcutOrganization: source.organization,
         latestCheck: check ? {
           checkedAt: check.checkedAt,
           isCurrent: check.checkedAt === latestRun?.checked_at,

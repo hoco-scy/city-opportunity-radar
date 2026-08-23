@@ -64,6 +64,15 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.ok(collection.body.sources.every((item) => item.collectionEntryUrl));
   assert.ok(collection.body.sources.every((item) => item.collectionMethod));
   assert.ok(collection.body.sources.every((item) => !/待登记/.test(item.collectionMethod)));
+  const beijingSelection = collection.body.sources.find((item) => item.id === "beijing-selection-program");
+  assert.equal(beijingSelection.organization, "北航就业信息网（公务员／选调生）");
+  assert.match(beijingSelection.collectionEntryUrl, /^https:\/\/career\.buaa\.edu\.cn\//);
+  for (const cityId of ["shanghai", "guangzhou", "shenzhen"]) {
+    const cityCollection = await request(base, `/api/cities/${cityId}/sources?view=collection`);
+    const selection = cityCollection.body.sources.find((item) => item.id === `${cityId}-selection-program`);
+    assert.equal(selection.organization, "北航就业信息网（公务员／选调生）");
+    assert.match(selection.collectionEntryUrl, /^https:\/\/career\.buaa\.edu\.cn\//);
+  }
   assert.ok(collection.body.sources.some((item) => item.latestCheck));
   assert.ok(collection.body.sources.some((item) => item.latestCheck?.isCurrent));
 
