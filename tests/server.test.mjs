@@ -85,7 +85,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.equal(beijingSelection.organization, "北航就业信息网（公务员／选调生）");
   assert.match(beijingSelection.collectionEntryUrl, /^https:\/\/career\.buaa\.edu\.cn\//);
   assert.equal(collection.body.sources.find((item) => item.id === "buaa-career-discovery")?.collectionMethod, "北航公开筛选脚本（线索待回溯）");
-  assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "平台原生筛选与官方原文回溯");
+  assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "国聘公开筛选脚本（线索待回溯）");
   for (const cityId of ["shanghai", "guangzhou", "shenzhen"]) {
     const cityCollection = await request(base, `/api/cities/${cityId}/sources?view=collection`);
     const selection = cityCollection.body.sources.find((item) => item.id === `${cityId}-selection-program`);
