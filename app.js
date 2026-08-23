@@ -1,7 +1,9 @@
+const page = document.body.dataset.page;
+const initialQuery = new URLSearchParams(window.location.search);
 const state = {
   cities: [],
   cityId: localStorage.getItem("menglin-radar-city") || "beijing",
-  track: "全部",
+  track: initialQuery.get("favorites") === "1" ? "我的收藏" : "全部",
   query: "",
   sourceView: "shortcut",
   favorites: new Set(),
@@ -39,7 +41,8 @@ async function api(path, options = {}) {
 async function loadFavorites() {
   const { favorites } = await api("/api/favorites", { favorite: true });
   state.favorites = new Set(favorites.map((item) => favoriteKey(item.cityId, item.opportunityId)));
-  byId("favorite-count").textContent = state.favorites.size;
+  const count = byId("favorite-count");
+  if (count) count.textContent = state.favorites.size;
 }
 
 function renderCities() {
@@ -51,7 +54,35 @@ function renderCities() {
   document.querySelectorAll("[data-city]").forEach((button) => button.addEventListener("click", () => selectCity(button.dataset.city)));
 }
 
-function sourceLink(item) {
+function updateLastChecked(city) {
+  const lastUpdated = byId("last-updated");
+  if (lastUpdated) lastUpdated.textContent = city.last_checked_at ? `最近核验：${dateLabel(city.last_checked_at)}` : "尚未导入更新记录";
+}
+
+function renderJobs(opportunities) {
+  const list = byId("opportunity-list");
+  const filtered = state.track === "我的收藏"
+    ? opportunities.filter((item) => state.favorites.has(favoriteKey(state.cityId, item.id)))
+    : opportunities;
+  list.innerHTML = filtered.length ? filtered.map(jobCard).join("") : `<div class="empty-state"><strong>${state.track === "我的收藏" ? "还没有收藏岗位" : "没有符合当前条件的公开岗位"}</strong><p>${state.track === "我的收藏" ? "点击岗位右上角的心形按钮，收藏会自动同步到这串收藏代码。" : "换一个赛道或关键词看看。"}</p></div>`;
+  document.querySelectorAll("[data-save]").forEach((button) => button.addEventListener("click", () => toggleFavorite(button.dataset.save)));
+}
+
+function jobCard(item) {
+  const saved = state.favorites.has(favoriteKey(state.cityId, item.id));
+  const tags = (item.tags || []).slice(0, 6).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+  const applicationUrl = item.officialApplyUrl || item.officialAnnouncementUrl;
+  return `<article class="opportunity-card"><div class="card-accent" data-track="${escapeHtml(item.track)}"></div><div class="card-content"><div class="card-topline"><span class="track-tag track-${escapeHtml(item.track)}">${escapeHtml(item.track)}</span><span class="official-tag">已核验</span><button class="save-button ${saved ? "saved" : ""}" data-save="${escapeHtml(item.id)}" aria-label="${saved ? "取消收藏" : "收藏"} ${escapeHtml(item.exactTitle || item.title)}" type="button">${saved ? "♥" : "♡"}</button></div><div class="card-title-row"><div><h3>${escapeHtml(item.exactTitle || item.title)}</h3><p>${escapeHtml(item.organization)} · ${escapeHtml(item.location || "地点以官网为准")}</p></div><div class="match-score"><strong>${escapeHtml(item.priority ?? "—")}</strong><span>关注度</span></div></div><p class="match-reason">${escapeHtml(item.matchReason || "已回到官方岗位页核验关键信息。")}</p><div class="tag-row">${tags}</div><div class="card-footer"><div><span class="status-pill">${escapeHtml(item.status || "以官网为准")}</span><span class="deadline">${escapeHtml(item.deadline || "截止时间以官网为准")}</span><span class="verified-date">核验 ${escapeHtml(item.verifiedAt || "")}</span></div>${applicationUrl ? `<a href="${escapeHtml(applicationUrl)}" target="_blank" rel="noreferrer">官方岗位页 ↗</a>` : ""}</div></div></article>`;
+}
+
+function renderAnnouncements(announcements) {
+  byId("announcement-list").innerHTML = announcements.length ? announcements.map((item) => {
+    const officialUrl = item.officialUrl || item.officialAnnouncementUrl;
+    return `<article class="announcement-card"><div><span class="track-tag track-${escapeHtml(item.track)}">${escapeHtml(item.track)}</span><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.note || "公告正在监测中；以官方发布时间为准。")}</p></div><div class="announcement-meta"><strong>${escapeHtml(item.status || "持续监测")}</strong>${item.checkedAt ? `<span>最近查看：${escapeHtml(dateLabel(item.checkedAt))}</span>` : ""}${officialUrl ? `<a href="${escapeHtml(officialUrl)}" target="_blank" rel="noreferrer">查看官方入口 ↗</a>` : ""}</div></article>`;
+  }).join("") : "<div class=\"empty-state\"><strong>当前没有单独展示的公告</strong><p>后续公告会在这里更新，岗位表通过核验后会进入岗位页。</p></div>";
+}
+
+function sourceCard(item) {
   if (state.sourceView === "collection") {
     const latest = item.latestCheck ? `<p class="check-note">本次核验：${escapeHtml(dateLabel(item.latestCheck.checkedAt))}</p>` : "<p class=\"check-note\">尚无本轮核验记录</p>";
     return `<article class="source-card collection-card"><p class="source-kind">采集与核验路线</p><h3>${escapeHtml(item.organization)}</h3><p>${escapeHtml(item.collectionAccessMode)}</p><p class="coverage">${item.coverage.map(escapeHtml).join(" · ")}</p>${latest}<a href="${escapeHtml(item.collectionEntryUrl)}" target="_blank" rel="noreferrer">查看采集入口 ↗</a></article>`;
@@ -60,76 +91,50 @@ function sourceLink(item) {
 }
 
 function renderSources(sources) {
-  byId("source-list").innerHTML = sources.length ? sources.map(sourceLink).join("") : "<p class=\"empty-state\">这个城市还没有导入信息源。</p>";
+  byId("source-list").innerHTML = sources.length ? sources.map(sourceCard).join("") : "<p class=\"empty-state\">这个城市还没有导入信息源。</p>";
 }
 
 function renderUpdates(runs) {
-  byId("update-list").innerHTML = runs.length ? runs.slice(0, 5).map((run) => `
-    <article class="update-item"><div><strong>${escapeHtml(dateLabel(run.checkedAt))}</strong><span class="run-status">${escapeHtml(run.status || "已完成")}</span></div><p>${escapeHtml(run.summary || run.outcome || "已完成公开信息核验。")}</p></article>
-  `).join("") : "<p class=\"empty-state\">尚未导入更新记录。</p>";
+  byId("update-list").innerHTML = runs.length ? runs.slice(0, 12).map((run) => `<article class="update-item"><div><strong>${escapeHtml(dateLabel(run.checkedAt))}</strong><span class="run-status">${escapeHtml(run.status || "已完成")}</span></div><p>${escapeHtml(run.summary || run.outcome || "已完成公开信息核验。")}</p></article>`).join("") : "<p class=\"empty-state\">尚未导入更新记录。</p>";
 }
 
-function isFavorite(item) {
-  return state.favorites.has(favoriteKey(state.cityId, item.id));
-}
-
-function jobCard(item) {
-  const saved = isFavorite(item);
-  const tags = (item.tags || []).slice(0, 6).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
-  const applicationUrl = item.officialApplyUrl || item.officialAnnouncementUrl;
-  return `<article class="opportunity-card">
-    <div class="card-accent" data-track="${escapeHtml(item.track)}"></div>
-    <div class="card-content">
-      <div class="card-topline"><span class="track-tag track-${escapeHtml(item.track)}">${escapeHtml(item.track)}</span><span class="official-tag">已核验</span><button class="save-button ${saved ? "saved" : ""}" data-save="${escapeHtml(item.id)}" aria-label="${saved ? "取消收藏" : "收藏"} ${escapeHtml(item.exactTitle || item.title)}" type="button">${saved ? "♥" : "♡"}</button></div>
-      <div class="card-title-row"><div><h3>${escapeHtml(item.exactTitle || item.title)}</h3><p>${escapeHtml(item.organization)} · ${escapeHtml(item.location || "地点以官网为准")}</p></div><div class="match-score"><strong>${escapeHtml(item.priority ?? "—")}</strong><span>关注度</span></div></div>
-      <p class="match-reason">${escapeHtml(item.matchReason || "已回到官方岗位页核验关键信息。")}</p>
-      <div class="tag-row">${tags}</div>
-      <div class="card-footer"><div><span class="status-pill">${escapeHtml(item.status || "以官网为准")}</span><span class="deadline">${escapeHtml(item.deadline || "截止时间以官网为准")}</span><span class="verified-date">核验 ${escapeHtml(item.verifiedAt || "")}</span></div>${applicationUrl ? `<a href="${escapeHtml(applicationUrl)}" target="_blank" rel="noreferrer">官方岗位页 ↗</a>` : ""}</div>
-    </div>
-  </article>`;
-}
-
-function renderJobs(opportunities) {
-  const list = byId("opportunity-list");
-  list.innerHTML = opportunities.length ? opportunities.map(jobCard).join("") : "<div class=\"empty-state\"><strong>没有符合当前条件的公开岗位</strong><p>换一个赛道或关键词看看。</p></div>";
-  document.querySelectorAll("[data-save]").forEach((button) => button.addEventListener("click", () => toggleFavorite(button.dataset.save)));
-}
-
-function renderAnnouncements(announcements) {
-  byId("announcement-list").innerHTML = announcements.length ? announcements.map((item) => {
-    const officialUrl = item.officialUrl || item.officialAnnouncementUrl;
-    return `<article class="announcement-card"><div><span class="track-tag track-${escapeHtml(item.track)}">${escapeHtml(item.track)}</span><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.note || "公告正在监测中；以官方发布时间为准。")}</p></div><div class="announcement-meta"><strong>${escapeHtml(item.status || "持续监测")}</strong>${item.checkedAt ? `<span>最近查看：${escapeHtml(dateLabel(item.checkedAt))}</span>` : ""}${officialUrl ? `<a href="${escapeHtml(officialUrl)}" target="_blank" rel="noreferrer">查看官方入口 ↗</a>` : ""}</div></article>`;
-  }).join("") : "<div class=\"empty-state\"><strong>当前没有单独展示的公告</strong><p>后续公告会在这里更新，岗位表通过核验后会进入岗位清单。</p></div>";
-}
-
-async function loadCityData() {
+async function loadPageData() {
   const city = state.cities.find((item) => item.id === state.cityId);
   if (!city) return;
-  byId("current-city-label").textContent = `${city.name} · 已核验信息`;
-  byId("job-heading").textContent = `${city.name}的具体岗位`;
-  byId("announcement-heading").textContent = `${city.name}的考试公告`;
-  byId("last-updated").textContent = city.last_checked_at ? `最近核验：${dateLabel(city.last_checked_at)}` : "尚未导入更新记录";
-  byId("opportunity-list").innerHTML = "<p class=\"loading\">正在读取公开岗位…</p>";
-  const parameters = new URLSearchParams();
-  if (state.track !== "全部") parameters.set("track", state.track);
-  if (state.query.trim()) parameters.set("q", state.query.trim());
-  const [jobs, announcements, sources, audit] = await Promise.all([
-    api(`/api/cities/${state.cityId}/opportunities?${parameters}`),
-    api(`/api/cities/${state.cityId}/opportunities?kind=monitor`),
-    api(`/api/cities/${state.cityId}/sources?view=${state.sourceView}`),
-    api(`/api/cities/${state.cityId}/audit`),
-  ]);
-  renderJobs(jobs.opportunities);
-  renderAnnouncements(announcements.opportunities);
-  renderSources(sources.sources);
-  renderUpdates(audit.runs);
+  updateLastChecked(city);
+  if (page === "jobs") {
+    byId("current-city-label").textContent = `${city.name} · 已核验信息`;
+    byId("job-heading").textContent = `${city.name}的具体岗位`;
+    const parameters = new URLSearchParams();
+    if (state.track !== "全部" && state.track !== "我的收藏") parameters.set("track", state.track);
+    if (state.query.trim()) parameters.set("q", state.query.trim());
+    const { opportunities } = await api(`/api/cities/${state.cityId}/opportunities?${parameters}`);
+    renderJobs(opportunities);
+    return;
+  }
+  if (page === "announcements") {
+    byId("announcement-heading").textContent = `${city.name}的考试公告`;
+    const { opportunities } = await api(`/api/cities/${state.cityId}/opportunities?kind=monitor`);
+    renderAnnouncements(opportunities);
+    return;
+  }
+  if (page === "sources") {
+    byId("source-heading").textContent = state.sourceView === "collection" ? `${city.name}的采集与核验路线` : `${city.name}的官方快捷入口`;
+    byId("source-intro").textContent = state.sourceView === "collection" ? "显示后台本轮获取、筛选与核验公开信息的路线和最近结果。" : "方便直接进入各个官方平台，不显示采集状态。";
+    const { sources } = await api(`/api/cities/${state.cityId}/sources?view=${state.sourceView}`);
+    renderSources(sources);
+    return;
+  }
+  byId("update-heading").textContent = `${city.name}的更新记录`;
+  const { runs } = await api(`/api/cities/${state.cityId}/audit`);
+  renderUpdates(runs);
 }
 
 async function selectCity(cityId) {
   state.cityId = cityId;
   localStorage.setItem("menglin-radar-city", cityId);
   renderCities();
-  await loadCityData();
+  await loadPageData();
 }
 
 async function toggleFavorite(opportunityId) {
@@ -139,23 +144,29 @@ async function toggleFavorite(opportunityId) {
     const { favorites } = await api("/api/favorites", { method, favorite: true, body: JSON.stringify({ cityId: state.cityId, opportunityId }) });
     state.favorites = new Set(favorites.map((item) => favoriteKey(item.cityId, item.opportunityId)));
     byId("favorite-count").textContent = state.favorites.size;
-    await loadCityData();
+    await loadPageData();
   } catch (error) {
     window.alert(error.message);
   }
 }
 
-function setupFilters() {
-  document.querySelectorAll("[data-track]").forEach((button) => button.addEventListener("click", async () => {
-    state.track = button.dataset.track;
-    document.querySelectorAll("[data-track]").forEach((item) => item.classList.toggle("active", item === button));
-    await loadCityData();
-  }));
+function setupJobsPage() {
+  document.querySelectorAll("[data-track]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.track === state.track);
+    button.addEventListener("click", async () => {
+      state.track = button.dataset.track;
+      document.querySelectorAll("[data-track]").forEach((item) => item.classList.toggle("active", item === button));
+      await loadPageData();
+    });
+  });
   let timer;
   byId("search").addEventListener("input", (event) => {
     clearTimeout(timer);
-    timer = setTimeout(async () => { state.query = event.target.value; await loadCityData(); }, 220);
+    timer = setTimeout(async () => { state.query = event.target.value; await loadPageData(); }, 220);
   });
+}
+
+function setupSourcesPage() {
   document.querySelectorAll("[data-source-view]").forEach((button) => button.addEventListener("click", async () => {
     state.sourceView = button.dataset.sourceView;
     document.querySelectorAll("[data-source-view]").forEach((item) => {
@@ -163,17 +174,15 @@ function setupFilters() {
       item.classList.toggle("active", selected);
       item.setAttribute("aria-selected", String(selected));
     });
-    const { sources } = await api(`/api/cities/${state.cityId}/sources?view=${state.sourceView}`);
-    renderSources(sources);
+    await loadPageData();
   }));
 }
 
 function setupFavoriteDialog() {
   const dialog = byId("favorite-dialog");
+  if (!dialog) return;
   const input = byId("favorite-code");
-  const open = () => { input.value = ensureCode(); byId("code-feedback").textContent = ""; dialog.showModal(); };
-  byId("manage-code").addEventListener("click", open);
-  byId("show-favorites").addEventListener("click", open);
+  byId("manage-code").addEventListener("click", () => { input.value = ensureCode(); byId("code-feedback").textContent = ""; dialog.showModal(); });
   byId("copy-code").addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(input.value); byId("code-feedback").textContent = "已复制。请保存在可信的位置。"; }
     catch { input.select(); byId("code-feedback").textContent = "请手动复制这串代码。"; }
@@ -183,27 +192,26 @@ function setupFavoriteDialog() {
     state.code = input.value.trim();
     localStorage.setItem("menglin-radar-favorite-code", state.code);
     await loadFavorites();
-    await loadCityData();
+    await loadPageData();
     byId("code-feedback").textContent = "已同步这串代码对应的收藏。";
   });
 }
 
 async function bootstrap() {
-  setupFilters();
+  if (page === "jobs") setupJobsPage();
+  if (page === "sources") setupSourcesPage();
   setupFavoriteDialog();
   try {
     const { cities } = await api("/api/cities");
     state.cities = cities;
-    if (!state.cities.length) {
-      byId("opportunity-list").innerHTML = "<div class=\"empty-state\"><strong>还没有导入公开数据</strong><p>完成公开数据导入后，四座城市会显示在这里。</p></div>";
-      return;
-    }
-    if (!state.cities.some((city) => city.id === state.cityId)) state.cityId = state.cities[0]?.id;
+    if (!state.cities.length) return;
+    if (!state.cities.some((city) => city.id === state.cityId)) state.cityId = state.cities[0].id;
     renderCities();
     await loadFavorites();
-    await loadCityData();
+    await loadPageData();
   } catch (error) {
-    byId("opportunity-list").innerHTML = `<div class="empty-state"><strong>暂时无法读取数据</strong><p>${escapeHtml(error.message)}</p></div>`;
+    const firstContent = document.querySelector(".page-content, .opportunity-list");
+    if (firstContent) firstContent.innerHTML = `<div class="empty-state"><strong>暂时无法读取数据</strong><p>${escapeHtml(error.message)}</p></div>`;
   }
 }
 

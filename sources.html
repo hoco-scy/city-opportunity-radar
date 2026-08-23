@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="梦琳求职雷达：四城官方快捷入口与采集核验路线。" />
+    <title>信息源｜梦琳求职雷达</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body data-page="sources">
+    <header class="topbar">
+      <a class="brand" href="index.html" aria-label="梦琳求职雷达岗位页"><span>◎</span><strong>梦琳求职雷达</strong></a>
+      <nav aria-label="主导航"><a href="index.html">岗位</a><a href="announcements.html">考试公告</a><a class="active" href="sources.html">信息源</a><a href="updates.html">更新记录</a></nav>
+      <a class="saved-trigger" href="index.html?favorites=1">我的收藏 <b id="favorite-count">0</b></a>
+    </header>
+    <main class="shell compact-page">
+      <section class="page-intro"><p class="eyebrow">信息源</p><h1>打开官网吗，<br /><em>和采集路线分开看。</em></h1><p>用户自行查看的官方入口，与后台收集、筛选和核验公开信息的路线严格分开呈现。</p></section>
+      <section class="city-switcher" aria-labelledby="city-title"><div><p class="eyebrow">选择关注范围</p><h2 id="city-title">选择城市</h2></div><div class="city-tabs" id="city-tabs" role="tablist" aria-label="选择城市"></div></section>
+      <section class="page-content" aria-live="polite"><div class="section-heading"><div><p class="eyebrow">来源目录</p><h2 id="source-heading">官方快捷入口</h2></div></div><p class="source-intro" id="source-intro">方便直接进入各个官方平台，不显示采集状态。</p><div class="source-view-tabs" role="tablist" aria-label="信息源展示方式"><button class="active" data-source-view="shortcut" role="tab" aria-selected="true" type="button">官方快捷入口</button><button data-source-view="collection" role="tab" aria-selected="false" type="button">采集与核验路线</button></div><div class="source-grid" id="source-list"><p class="loading">正在读取信息源…</p></div></section>
+    </main>
+    <footer>梦琳求职雷达 · 只通过官方公开来源发布可行动的信息。</footer>
+  </body>
+</html>

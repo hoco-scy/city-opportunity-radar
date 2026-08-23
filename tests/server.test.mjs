@@ -76,8 +76,10 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.equal(removed.response.status, 200);
   assert.equal(removed.body.favorites.length, 0);
 
-  const page = await fetch(`${base}/`);
-  assert.equal(page.status, 200);
-  assert.match(page.headers.get("content-type") ?? "", /^text\/html/);
-  assert.match(await page.text(), /梦琳求职雷达/);
+  for (const [pathname, expectedTitle] of [["/", /岗位｜梦琳求职雷达/], ["/announcements.html", /考试公告｜梦琳求职雷达/], ["/sources.html", /信息源｜梦琳求职雷达/], ["/updates.html", /更新记录｜梦琳求职雷达/]]) {
+    const page = await fetch(`${base}${pathname}`);
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get("content-type") ?? "", /^text\/html/);
+    assert.match(await page.text(), expectedTitle);
+  }
 });

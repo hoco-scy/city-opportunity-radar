@@ -18,6 +18,9 @@ const root = resolve(new URL(".", import.meta.url).pathname);
 const staticFiles = new Map([
   ["/", "index.html"],
   ["/index.html", "index.html"],
+  ["/announcements.html", "announcements.html"],
+  ["/sources.html", "sources.html"],
+  ["/updates.html", "updates.html"],
   ["/app.js", "app.js"],
   ["/styles.css", "styles.css"],
   ["/assets/yier-bubu-authorized.jpeg", "assets/yier-bubu-authorized.jpeg"],

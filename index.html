@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="梦琳求职雷达：北京、上海、广州、深圳的已核验具体岗位。" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <title>梦琳求职雷达</title>
+    <title>岗位｜梦琳求职雷达</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="app.js" defer></script>
   </head>
-  <body>
+  <body data-page="jobs">
     <header class="topbar">
-      <a class="brand" href="#top" aria-label="梦琳求职雷达首页"><span>◎</span><strong>梦琳求职雷达</strong></a>
-      <nav aria-label="主导航"><a href="#jobs">岗位</a><a href="#announcements">考试公告</a><a href="#sources">信息源</a><a href="#updates">更新记录</a></nav>
-      <button class="saved-trigger" id="show-favorites" type="button">我的收藏 <b id="favorite-count">0</b></button>
+      <a class="brand" href="index.html" aria-label="梦琳求职雷达岗位页"><span>◎</span><strong>梦琳求职雷达</strong></a>
+      <nav aria-label="主导航"><a class="active" href="index.html">岗位</a><a href="announcements.html">考试公告</a><a href="sources.html">信息源</a><a href="updates.html">更新记录</a></nav>
+      <a class="saved-trigger" href="index.html?favorites=1">我的收藏 <b id="favorite-count">0</b></a>
     </header>
 
     <main id="top" class="shell">
@@ -21,7 +21,7 @@
         <div class="hero-copy">
           <p class="eyebrow">已核验的具体岗位</p>
           <h1>不用在不同城市之间<br /><em>来回找入口。</em></h1>
-          <p>北京、上海、广州和深圳的岗位、公告、信息源与更新记录现在汇总在同一处。页面只展示能回到官方公告或招聘系统的公开信息。</p>
+          <p>北京、上海、广州和深圳的岗位汇总在同一处。这里仅展示能够回到官方公告或招聘系统、并能定位到具体岗位的信息。</p>
           <p class="hero-cheer">梦琳一定可以上岸！</p>
         </div>
         <figure class="mascot"><img src="assets/yier-bubu-authorized.jpeg" alt="一二和布布形象：一只小熊和一只小熊猫并肩站在一起" /></figure>
@@ -45,6 +45,7 @@
               <button data-track="选调优培" type="button">选调优培</button>
               <button data-track="央国企" type="button">央国企</button>
               <button data-track="事业单位" type="button">事业单位</button>
+              <button data-track="我的收藏" type="button">我的收藏</button>
             </div>
             <label class="search-box"><span aria-hidden="true">⌕</span><input id="search" aria-label="搜索岗位、单位或关键词" placeholder="搜索岗位、单位或关键词" /></label>
           </div>
@@ -65,27 +66,6 @@
           </section>
         </aside>
       </section>
-
-      <section class="announcements-section" id="announcements">
-        <div class="section-heading"><div><p class="eyebrow">考试公告</p><h2 id="announcement-heading">报名窗口与公告监测</h2></div></div>
-        <p class="source-intro">公告还没有拆出可报的具体岗位时，会单独放在这里；一旦职位表发布并完成核验，才进入上方岗位清单。</p>
-        <div class="announcement-list" id="announcement-list"><p class="loading">正在读取考试公告…</p></div>
-      </section>
-
-      <section class="sources-section" id="sources">
-        <div class="section-heading"><div><p class="eyebrow">信息源</p><h2>打开入口，和我们采集信息，是两件事</h2></div></div>
-        <p class="source-intro">“官方快捷入口”方便你自己查看；“采集与核验路线”说明后台本轮通过哪里获取公开信息。两者不会混在同一张卡片上。</p>
-        <div class="source-view-tabs" role="tablist" aria-label="信息源展示方式">
-          <button class="active" data-source-view="shortcut" role="tab" aria-selected="true" type="button">官方快捷入口</button>
-          <button data-source-view="collection" role="tab" aria-selected="false" type="button">采集与核验路线</button>
-        </div>
-        <div class="source-grid" id="source-list"><p class="loading">正在读取信息源…</p></div>
-      </section>
-
-      <section class="updates-section" id="updates">
-        <div class="section-heading"><div><p class="eyebrow">更新记录</p><h2>每一次公开更新都有留痕</h2></div></div>
-        <div class="update-list" id="update-list"><p class="loading">正在读取更新记录…</p></div>
-      </section>
     </main>
 
     <dialog id="favorite-dialog" class="favorite-dialog" aria-labelledby="favorite-dialog-title">
@@ -98,6 +78,6 @@
       <div class="dialog-actions"><button class="primary-button" id="copy-code" type="button">复制代码</button><button class="outline-button" id="save-code" type="button">使用这串代码</button></div>
       <p class="dialog-note" id="code-feedback" aria-live="polite"></p>
     </dialog>
-    <footer>梦琳求职雷达 · 公开岗位信息仅供辅助筛选，报名或投递前请以单位官网为准。</footer>
+    <footer>梦琳求职雷达 · 报名或投递前请以单位官网为准。</footer>
   </body>
 </html>
