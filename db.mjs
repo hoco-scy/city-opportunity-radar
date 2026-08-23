@@ -302,6 +302,8 @@ const collectionMethodLabels = {
   "browser-antibot": "官网招聘入口人工浏览核验",
   "official-announcement-discovery": "官方公告发现与原文回溯",
   "public-filterable-list": "公开筛选列表与公告详情核验",
+  "script-buaa-public-filtered-discovery": "北航公开筛选脚本（线索待回溯）",
+  "browser-platform-native-filter": "平台原生筛选与官方原文回溯",
 };
 
 export function listCities(db) {
@@ -354,6 +356,7 @@ export function listSources(db, cityId, view = "shortcut") {
     const source = JSON.parse(row.payload_json);
     const check = row.latest_check_json ? JSON.parse(row.latest_check_json) : null;
     if (view === "collection") {
+      if (source.monitoringEnabled === false) return null;
       const accessMode = source.collectionAccessMode ?? source.accessMode;
       if (!accessMode) return null;
       return {

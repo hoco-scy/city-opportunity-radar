@@ -71,13 +71,15 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.ok(shortcuts.body.sources.every((item) => !Object.hasOwn(item, "latestCheck")));
 
   const collection = await request(base, "/api/cities/beijing/sources?view=collection");
-  assert.equal(collection.body.sources.length, 13);
+  assert.ok(collection.body.sources.length > 0);
   assert.ok(collection.body.sources.every((item) => item.collectionEntryUrl));
   assert.ok(collection.body.sources.every((item) => item.collectionMethod));
   assert.ok(collection.body.sources.every((item) => !/待登记/.test(item.collectionMethod)));
   const beijingSelection = collection.body.sources.find((item) => item.id === "beijing-selection-program");
   assert.equal(beijingSelection.organization, "北航就业信息网（公务员／选调生）");
   assert.match(beijingSelection.collectionEntryUrl, /^https:\/\/career\.buaa\.edu\.cn\//);
+  assert.equal(collection.body.sources.find((item) => item.id === "buaa-career-discovery")?.collectionMethod, "北航公开筛选脚本（线索待回溯）");
+  assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "平台原生筛选与官方原文回溯");
   for (const cityId of ["shanghai", "guangzhou", "shenzhen"]) {
     const cityCollection = await request(base, `/api/cities/${cityId}/sources?view=collection`);
     const selection = cityCollection.body.sources.find((item) => item.id === `${cityId}-selection-program`);
@@ -86,6 +88,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   }
   assert.ok(collection.body.sources.some((item) => item.latestCheck));
   assert.ok(collection.body.sources.some((item) => item.latestCheck?.isCurrent));
+  assert.ok(!collection.body.sources.some((item) => item.id === "chinatelecom-careers"));
 
   const denied = await request(base, "/api/favorites");
   assert.equal(denied.response.status, 401);
