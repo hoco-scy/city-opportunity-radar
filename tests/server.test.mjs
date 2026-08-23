@@ -93,6 +93,12 @@ test("imports all four cities and exposes the unified public API", async (t) => 
     const page = await fetch(`${base}${pathname}`);
     assert.equal(page.status, 200);
     assert.match(page.headers.get("content-type") ?? "", /^text\/html/);
+    assert.equal(page.headers.get("cache-control"), "no-cache");
     assert.match(await page.text(), expectedTitle);
   }
+  const clientScript = await fetch(`${base}/app.js`);
+  assert.equal(clientScript.headers.get("cache-control"), "no-cache");
+  const homepage = await (await fetch(`${base}/`)).text();
+  assert.match(homepage, /app\.js\?v=20260823\.2/);
+  assert.match(homepage, /sources\.html\?v=20260823\.2/);
 });

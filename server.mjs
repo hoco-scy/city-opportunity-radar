@@ -129,7 +129,10 @@ async function handleStatic(res, pathname) {
     const body = await readFile(resolve(root, file));
     res.writeHead(200, {
       "content-type": contentTypes[extname(file)] ?? "application/octet-stream",
-      "cache-control": file === "index.html" ? "no-cache" : "public, max-age=3600",
+      // Pages and their small shared client bundle must move together.  A
+      // cached app.js paired with freshly deployed HTML can prevent the app
+      // from booting altogether, so let the browser revalidate every asset.
+      "cache-control": "no-cache",
       "content-security-policy": "default-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'",
       ...securityHeaders,
     });

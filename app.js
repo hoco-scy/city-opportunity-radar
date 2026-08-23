@@ -185,18 +185,25 @@ function setupFavoriteDialog() {
   const dialog = byId("favorite-dialog");
   if (!dialog) return;
   const input = byId("favorite-code");
-  byId("manage-code").addEventListener("click", () => { input.value = ensureCode(); byId("code-feedback").textContent = ""; dialog.showModal(); });
-  byId("copy-code").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(input.value); byId("code-feedback").textContent = "已复制。请保存在可信的位置。"; }
-    catch { input.select(); byId("code-feedback").textContent = "请手动复制这串代码。"; }
+  const manage = byId("manage-code");
+  const copy = byId("copy-code");
+  const save = byId("save-code");
+  const feedback = byId("code-feedback");
+  // A missing optional dialog control should never prevent city data or
+  // opportunities from rendering on the rest of the page.
+  if (!input || !manage || !copy || !save || !feedback) return;
+  manage.addEventListener("click", () => { input.value = ensureCode(); feedback.textContent = ""; dialog.showModal(); });
+  copy.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(input.value); feedback.textContent = "已复制。请保存在可信的位置。"; }
+    catch { input.select(); feedback.textContent = "请手动复制这串代码。"; }
   });
-  byId("save-code").addEventListener("click", async () => {
-    if (!/^mlr_[A-Za-z0-9_-]{40,160}$/.test(input.value.trim())) { byId("code-feedback").textContent = "这不是有效的收藏代码。"; return; }
+  save.addEventListener("click", async () => {
+    if (!/^mlr_[A-Za-z0-9_-]{40,160}$/.test(input.value.trim())) { feedback.textContent = "这不是有效的收藏代码。"; return; }
     state.code = input.value.trim();
     localStorage.setItem("menglin-radar-favorite-code", state.code);
     await loadFavorites();
     await loadPageData();
-    byId("code-feedback").textContent = "已同步这串代码对应的收藏。";
+    feedback.textContent = "已同步这串代码对应的收藏。";
   });
 }
 
