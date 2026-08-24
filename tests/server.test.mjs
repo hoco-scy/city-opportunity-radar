@@ -6,7 +6,14 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import { createRadarServer } from "../server.mjs";
 import { importLegacyCities } from "../scripts/import-legacy-cities.mjs";
-import { isPubliclyDisplayableOpportunity } from "../db.mjs";
+import {
+  acquireUpdateLock,
+  finishUpdateRun,
+  getUpdateRun,
+  isPubliclyDisplayableOpportunity,
+  listUpdateEvents,
+  openRadarDatabase,
+} from "../db.mjs";
 import { nextDailyRun } from "../scheduler.mjs";
 
 const projectRoot = resolve(new URL("../", import.meta.url).pathname);
@@ -45,6 +52,28 @@ test("computes the next daily run in Beijing time", () => {
   assert.equal(nextDailyRun({ ...schedule, enabled: false }, new Date("2026-08-24T00:30:00.000Z")), null);
 });
 
+test("uses one persistent update lock across database connections", async (t) => {
+  const workdir = await mkdtemp(join(tmpdir(), "menglin-radar-lock-"));
+  const databasePath = join(workdir, "radar.sqlite");
+  const firstDb = openRadarDatabase(databasePath);
+  const secondDb = openRadarDatabase(databasePath);
+  t.after(async () => rm(workdir, { recursive: true, force: true }));
+  t.after(() => { firstDb.close(); secondDb.close(); });
+
+  const first = acquireUpdateLock(firstDb, { runId: "run-first", trigger: "manual", requestedBy: "tester" });
+  assert.equal(first.acquired, true);
+  const duplicate = acquireUpdateLock(secondDb, { runId: "run-duplicate", trigger: "schedule" });
+  assert.equal(duplicate.acquired, false);
+  assert.equal(duplicate.run.runId, "run-first");
+  assert.equal(getUpdateRun(secondDb, "run-duplicate"), null);
+
+  finishUpdateRun(firstDb, "run-first", { state: "completed", summary: { importedCityCount: 4, failedCityCount: 0 } });
+  assert.equal(listUpdateEvents(secondDb, "run-first").at(-1).phase, "run-finished");
+  const next = acquireUpdateLock(secondDb, { runId: "run-next", trigger: "schedule" });
+  assert.equal(next.acquired, true);
+  finishUpdateRun(secondDb, "run-next", { state: "completed", summary: { importedCityCount: 4, failedCityCount: 0 } });
+});
+
 test("imports all four cities and exposes the unified public API", async (t) => {
   const workdir = await mkdtemp(join(tmpdir(), "menglin-radar-"));
   const databasePath = join(workdir, "radar.sqlite");
@@ -56,11 +85,23 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.ok(summary.every((item) => item.sources >= 27));
 
   let syncCalls = 0;
+  let releaseSync;
+  const syncBarrier = new Promise((resolveBarrier) => { releaseSync = resolveBarrier; });
+  t.after(() => releaseSync());
   const { server, db } = createRadarServer({
     databasePath,
     bootstrapAdmin: { username: "menglin-admin", password: "test-only-admin-password" },
-    syncRunner: async () => {
+    syncRunner: async ({ onProgress }) => {
       syncCalls += 1;
+      onProgress({ phase: "city-start", cityId: "beijing", message: "北京开始执行完整采集工作流。" });
+      onProgress({
+        phase: "source-check",
+        cityId: "beijing",
+        sourceId: "test-source",
+        message: "测试来源：采集 12 条，筛选后 3 条。",
+        data: { collectionMetrics: { collected: 12, afterFilter: 3 } },
+      });
+      await syncBarrier;
       return { importedCityCount: 4, failedCityCount: 0, outcomes: [], imported: [], completedAt: new Date().toISOString() };
     },
     schedulerEnabled: false,
@@ -148,10 +189,27 @@ test("imports all four cities and exposes the unified public API", async (t) => 
 
   const syncStart = await request(base, "/api/admin/sync", { method: "POST", headers: adminHeaders, body: "{}" });
   assert.equal(syncStart.response.status, 202);
-  await new Promise((resolveWait) => setTimeout(resolveWait, 20));
-  const syncStatus = await request(base, "/api/admin/sync", { headers: adminHeaders });
-  assert.equal(syncStatus.body.state, "completed");
+  assert.equal(syncStart.body.state, "running");
+  assert.equal(syncStart.body.alreadyRunning, false);
+  const duplicateSync = await request(base, "/api/admin/sync", { method: "POST", headers: adminHeaders, body: "{}" });
+  assert.equal(duplicateSync.response.status, 202);
+  assert.equal(duplicateSync.body.alreadyRunning, true);
+  assert.equal(duplicateSync.body.runId, syncStart.body.runId);
+  const runningStatus = await request(base, `/api/admin/sync?runId=${syncStart.body.runId}&after=0`, { headers: adminHeaders });
+  assert.equal(runningStatus.body.state, "running");
+  assert.ok(runningStatus.body.events.some((event) => event.phase === "run-start"));
+  assert.ok(runningStatus.body.events.some((event) => event.phase === "source-check" && event.data.collectionMetrics.collected === 12));
   assert.equal(syncCalls, 1);
+  const lastSequence = runningStatus.body.nextSequence;
+  releaseSync();
+  let syncStatus;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 10));
+    syncStatus = await request(base, `/api/admin/sync?runId=${syncStart.body.runId}&after=${lastSequence}`, { headers: adminHeaders });
+    if (syncStatus.body.state !== "running") break;
+  }
+  assert.equal(syncStatus.body.state, "completed");
+  assert.ok(syncStatus.body.events.some((event) => event.phase === "run-finished"));
 
   const shortcuts = await request(base, "/api/cities/beijing/sources?view=shortcut");
   assert.ok(shortcuts.body.sources.length > 0);
@@ -220,12 +278,13 @@ test("imports all four cities and exposes the unified public API", async (t) => 
     assert.match(pageHtml, /class="topbar-actions"/);
     assert.match(pageHtml, /data-admin-trigger/);
     assert.match(pageHtml, /id="admin-dialog"/);
+    assert.match(pageHtml, /id="sync-event-list"/);
   }
   const clientScript = await fetch(`${base}/app.js`);
   assert.equal(clientScript.headers.get("cache-control"), "no-cache");
   const homepage = await (await fetch(`${base}/`)).text();
-  assert.match(homepage, /app\.js\?v=20260824\.4/);
-  assert.match(homepage, /sources\.html\?v=20260824\.4/);
+  assert.match(homepage, /app\.js\?v=20260824\.5/);
+  assert.match(homepage, /sources\.html\?v=20260824\.5/);
   assert.match(homepage, /更新控制台/);
   assert.doesNotMatch(homepage, /待确认线索|核验并发布岗位/);
 });

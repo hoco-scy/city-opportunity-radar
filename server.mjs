@@ -1,23 +1,32 @@
 import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import {
   addFavorite,
+  acquireUpdateLock,
+  appendUpdateEvent,
   createAdminSession,
   defaultDatabasePath,
   ensureBootstrapAdmin,
   getCityAudit,
   getAdminSession,
+  getLatestUpdateRun,
+  getLockedUpdateRun,
+  getUpdateRun,
+  heartbeatUpdateLock,
   isAdminConfigured,
   isValidUserCode,
   listCities,
   listFavoriteIds,
   listOpportunities,
   listSources,
+  listUpdateEvents,
   openRadarDatabase,
   removeFavorite,
   revokeAdminSession,
   saveUpdateSchedule,
+  finishUpdateRun,
 } from "./db.mjs";
 import { runAllCitiesSync } from "./scripts/run-all-cities-sync.mjs";
 import { createScheduleController } from "./scheduler.mjs";
@@ -91,23 +100,55 @@ function cityExists(db, cityId) {
 
 function createSyncController({ db, databasePath, legacyRoot, syncRunner }) {
   let active = null;
-  let status = { state: "idle", trigger: null, startedAt: null, completedAt: null, summary: null, error: null };
+  let activeRunId = null;
+  let heartbeatTimer = null;
+
+  function current({ runId, after = 0 } = {}) {
+    const run = runId ? getUpdateRun(db, runId) : getLockedUpdateRun(db) ?? getLatestUpdateRun(db);
+    if (!run) return { state: "idle", runId: null, events: [], nextSequence: Number(after) || 0 };
+    const events = listUpdateEvents(db, run.runId, { after });
+    return { ...run, events, nextSequence: events.at(-1)?.sequence ?? (Number(after) || 0) };
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+
   return {
-    current() { return status; },
-    start(trigger = "manual") {
-      if (active) return { ...status, alreadyRunning: true };
-      status = { state: "running", trigger, startedAt: new Date().toISOString(), completedAt: null, summary: null, error: null };
+    current,
+    start(trigger = "manual", requestedBy = null) {
+      if (active && activeRunId) return { ...current({ runId: activeRunId }), alreadyRunning: true };
+      const runId = `update_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}_${randomUUID().slice(0, 8)}`;
+      const lock = acquireUpdateLock(db, { runId, trigger, requestedBy });
+      if (!lock.acquired) return { ...current({ runId: lock.run?.runId }), alreadyRunning: true };
+      activeRunId = runId;
+      heartbeatTimer = setInterval(() => heartbeatUpdateLock(db, runId), 30_000);
+      heartbeatTimer.unref?.();
       active = Promise.resolve()
-        .then(() => syncRunner({ legacyRoot, databasePath }))
+        .then(() => syncRunner({
+          legacyRoot,
+          databasePath,
+          onProgress: (event) => appendUpdateEvent(db, runId, event),
+        }))
         .then((summary) => {
           db.exec("PRAGMA optimize");
-          status = { state: summary.failedCityCount ? "completed-partial" : "completed", trigger: status.trigger, startedAt: status.startedAt, completedAt: new Date().toISOString(), summary, error: null };
+          finishUpdateRun(db, runId, { state: summary.failedCityCount ? "completed-partial" : "completed", summary });
         })
         .catch((error) => {
-          status = { state: "failed", trigger: status.trigger, startedAt: status.startedAt, completedAt: new Date().toISOString(), summary: null, error: error instanceof Error ? error.message : "统一更新失败" };
+          const message = error instanceof Error ? error.message : "统一更新失败";
+          try {
+            finishUpdateRun(db, runId, { state: "failed", error: message });
+          } catch (finishError) {
+            console.error("无法写入更新失败状态", finishError);
+          }
         })
-        .finally(() => { active = null; });
-      return { ...status, alreadyRunning: false };
+        .finally(() => {
+          stopHeartbeat();
+          active = null;
+          activeRunId = null;
+        });
+      return { ...current({ runId }), alreadyRunning: false };
     },
   };
 }
@@ -144,8 +185,8 @@ async function handleAdminApi(req, res, url, db, syncController, scheduleControl
   const session = requireAdmin(req, res, db);
   if (!session) return;
   if (pathname === "/api/admin/sync") {
-    if (req.method === "GET") return sendJson(res, 200, syncController.current());
-    if (req.method === "POST") return sendJson(res, 202, syncController.start("manual"));
+    if (req.method === "GET") return sendJson(res, 200, syncController.current({ runId: url.searchParams.get("runId"), after: url.searchParams.get("after") }));
+    if (req.method === "POST") return sendJson(res, 202, syncController.start("manual", session.username));
     return sendError(res, 405, "不支持的请求方法");
   }
   if (pathname === "/api/admin/schedule") {

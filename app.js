@@ -10,6 +10,9 @@ const state = {
   code: localStorage.getItem("menglin-radar-favorite-code") || "",
   adminSession: sessionStorage.getItem("menglin-radar-admin-session") || "",
   adminUsername: "",
+  syncRunId: "",
+  syncEventSequence: 0,
+  syncPolling: false,
 };
 
 const byId = (id) => document.getElementById(id);
@@ -249,12 +252,14 @@ function updateAdminControls() {
   const logout = byId("admin-logout");
   const sync = byId("run-full-sync");
   const controls = byId("admin-update-controls");
+  const progress = byId("sync-progress");
   const copy = byId("admin-login-copy");
   if (fields) fields.hidden = loggedIn;
   if (login) login.hidden = loggedIn;
   if (logout) logout.hidden = !loggedIn;
   if (sync) sync.hidden = !loggedIn;
   if (controls) controls.hidden = !loggedIn;
+  if (progress && !loggedIn) progress.hidden = true;
   if (copy) copy.textContent = loggedIn
     ? `已登录为 ${state.adminUsername || "管理员"}。可以立即更新，或调整服务器的每日更新计划。`
     : "登录后可以控制四座城市何时执行完整更新。";
@@ -293,7 +298,7 @@ function setupAdminDialog() {
     updateAdminControls();
     if (feedback) feedback.textContent = "";
     dialog.showModal();
-    if (state.adminSession) await loadAdminSchedule();
+    if (state.adminSession) await Promise.all([loadAdminSchedule(), loadSyncStatus()]);
   }));
   login?.addEventListener("click", async () => {
     try {
@@ -304,13 +309,15 @@ function setupAdminDialog() {
       password.value = "";
       updateAdminControls();
       feedback.textContent = "管理员已登录。";
-      await loadAdminSchedule();
+      await Promise.all([loadAdminSchedule(), loadSyncStatus()]);
     } catch (error) { feedback.textContent = error.message; }
   });
   logout?.addEventListener("click", async () => {
     try { await api("/api/admin/session", { method: "DELETE", admin: true }); } catch { /* expired sessions are still cleared locally */ }
     state.adminSession = "";
     state.adminUsername = "";
+    state.syncRunId = "";
+    state.syncEventSequence = 0;
     sessionStorage.removeItem("menglin-radar-admin-session");
     updateAdminControls();
     feedback.textContent = "已退出管理员账号。";
@@ -319,8 +326,11 @@ function setupAdminDialog() {
   sync?.addEventListener("click", async () => {
     try {
       const result = await api("/api/admin/sync", { method: "POST", admin: true, body: JSON.stringify({}) });
-      feedback.textContent = result.alreadyRunning ? "完整更新已在进行中。" : "已开始四城完整更新；可以关闭窗口，完成后刷新岗位页查看结果。";
-      await waitForSync(feedback);
+      feedback.textContent = result.alreadyRunning
+        ? "已有更新正在运行，已接入同一份事实日志；没有启动第二个请求。"
+        : "已取得更新锁，四城完整更新开始执行。";
+      renderSyncStatus(result, { reset: state.syncRunId !== result.runId });
+      await waitForSync(feedback, result);
     } catch (error) { feedback.textContent = error.message; }
   });
   saveSchedule?.addEventListener("click", async () => {
@@ -354,21 +364,83 @@ async function loadAdminSchedule() {
   }
 }
 
-async function waitForSync(feedback) {
-  for (let attempt = 0; attempt < 240; attempt += 1) {
-    await new Promise((resolveWait) => window.setTimeout(resolveWait, 3_000));
-    const status = await api("/api/admin/sync", { admin: true });
-    if (status.state === "running") continue;
-    if (status.state === "completed" || status.state === "completed-partial") {
-      const summary = status.summary;
-      feedback.textContent = `更新完成：${summary.importedCityCount} 个城市已导入${summary.failedCityCount ? `，${summary.failedCityCount} 个城市未通过本轮门禁` : ""}。`;
-      await refreshCitiesAndPage();
-      return;
-    }
-    feedback.textContent = status.error || "统一更新未完成，请查看管理员接口记录。";
+const syncStateLabels = {
+  running: "更新中",
+  completed: "已完成",
+  "completed-partial": "部分完成",
+  failed: "执行失败",
+};
+const syncTriggerLabels = { schedule: "定时触发", cli: "命令行触发", manual: "管理员触发" };
+
+function renderSyncStatus(status, { reset = false } = {}) {
+  const panel = byId("sync-progress");
+  const title = byId("sync-progress-title");
+  const meta = byId("sync-progress-meta");
+  const list = byId("sync-event-list");
+  if (!panel || !title || !meta || !list || !status?.runId || !state.adminSession) {
+    if (panel) panel.hidden = true;
     return;
   }
-  feedback.textContent = "更新仍在运行，可稍后重新打开管理员窗口查看状态。";
+  const changedRun = state.syncRunId !== status.runId;
+  if (reset || changedRun) {
+    list.innerHTML = "";
+    state.syncEventSequence = 0;
+  }
+  state.syncRunId = status.runId;
+  title.textContent = `事实日志 · ${syncStateLabels[status.state] || status.state}`;
+  meta.textContent = `${dateLabel(status.startedAt)} · ${syncTriggerLabels[status.trigger] || "服务端触发"}${status.state === "running" ? ` · 最近心跳 ${dateLabel(status.heartbeatAt)}` : ""}`;
+  if ((status.events || []).length) list.querySelector(".sync-event-empty")?.remove();
+  for (const event of status.events || []) {
+    if (event.sequence <= state.syncEventSequence) continue;
+    const detail = event.data?.error || event.data?.note || "";
+    const scope = [event.cityId, event.sourceId].filter(Boolean).join(" · ");
+    list.insertAdjacentHTML("beforeend", `<li class="sync-event sync-event-${escapeHtml(event.level || "info")}"><time>${escapeHtml(dateLabel(event.occurredAt))}</time><div><strong>${escapeHtml(event.message)}</strong>${scope ? `<span>${escapeHtml(scope)}</span>` : ""}${detail ? `<p>${escapeHtml(detail)}</p>` : ""}</div></li>`);
+    state.syncEventSequence = event.sequence;
+  }
+  if (!list.children.length) list.innerHTML = "<li class=\"sync-event-empty\">正在等待第一条执行事实…</li>";
+  panel.hidden = false;
+  list.scrollTop = list.scrollHeight;
+}
+
+async function loadSyncStatus() {
+  try {
+    const status = await api("/api/admin/sync?after=0", { admin: true });
+    renderSyncStatus(status, { reset: true });
+    if (status.state === "running") void waitForSync(byId("admin-feedback"), status);
+  } catch (error) {
+    byId("admin-feedback").textContent = error.message;
+  }
+}
+
+async function waitForSync(feedback, initialStatus = null) {
+  if (state.syncPolling) return;
+  state.syncPolling = true;
+  try {
+    let status = initialStatus;
+    for (let attempt = 0; attempt < 240; attempt += 1) {
+      if (!status || attempt > 0) {
+        const parameters = new URLSearchParams({ runId: state.syncRunId, after: String(state.syncEventSequence) });
+        status = await api(`/api/admin/sync?${parameters}`, { admin: true });
+        renderSyncStatus(status);
+      }
+      if (status.state === "completed" || status.state === "completed-partial") {
+        const summary = status.summary || {};
+        feedback.textContent = `更新完成：${summary.importedCityCount ?? 0} 个城市已导入${summary.failedCityCount ? `，${summary.failedCityCount} 个城市未完成` : ""}。`;
+        await refreshCitiesAndPage();
+        return;
+      }
+      if (status.state !== "running") {
+        feedback.textContent = status.error || "统一更新未完成，执行事实已保留。";
+        return;
+      }
+      await new Promise((resolveWait) => window.setTimeout(resolveWait, 3_000));
+    }
+    feedback.textContent = "更新仍在运行；关闭窗口不会中断，重新打开即可继续查看事实日志。";
+  } catch (error) {
+    feedback.textContent = `事实日志暂时无法刷新：${error.message}`;
+  } finally {
+    state.syncPolling = false;
+  }
 }
 
 async function bootstrap() {
@@ -389,7 +461,7 @@ async function bootstrap() {
     if (page === "jobs" && initialQuery.get("admin") === "1") {
       const dialog = byId("admin-dialog");
       if (dialog && !dialog.open) dialog.showModal();
-      if (state.adminSession) await loadAdminSchedule();
+      if (state.adminSession) await Promise.all([loadAdminSchedule(), loadSyncStatus()]);
     }
   } catch (error) {
     const firstContent = document.querySelector(".page-content, .opportunity-list");

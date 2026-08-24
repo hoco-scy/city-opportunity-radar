@@ -121,6 +121,39 @@ const schema = `
     updated_by TEXT,
     last_triggered_at TEXT
   );
+  CREATE TABLE IF NOT EXISTS update_runs (
+    run_id TEXT PRIMARY KEY,
+    trigger TEXT NOT NULL,
+    requested_by TEXT,
+    state TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    completed_at TEXT,
+    heartbeat_at TEXT NOT NULL,
+    summary_json TEXT,
+    error TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_update_runs_started
+    ON update_runs(started_at DESC);
+  CREATE TABLE IF NOT EXISTS update_events (
+    run_id TEXT NOT NULL REFERENCES update_runs(run_id) ON DELETE CASCADE,
+    sequence INTEGER NOT NULL,
+    occurred_at TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    level TEXT NOT NULL,
+    city_id TEXT,
+    source_id TEXT,
+    message TEXT NOT NULL,
+    data_json TEXT,
+    PRIMARY KEY (run_id, sequence)
+  );
+  CREATE INDEX IF NOT EXISTS idx_update_events_run_time
+    ON update_events(run_id, occurred_at, sequence);
+  CREATE TABLE IF NOT EXISTS update_lock (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    run_id TEXT NOT NULL REFERENCES update_runs(run_id) ON DELETE CASCADE,
+    acquired_at TEXT NOT NULL,
+    heartbeat_at TEXT NOT NULL
+  );
 `;
 
 const forbiddenField = /^(candidateName|fullName|phone|email|birthDate|homeAddress|schoolName|studentId|idCard|portrait|avatar)$/i;
@@ -155,6 +188,11 @@ export function defaultDatabasePath(root = process.cwd()) {
 export function openRadarDatabase(filename = defaultDatabasePath()) {
   mkdirSync(dirname(filename), { recursive: true });
   const db = new DatabaseSync(filename);
+  // The web server, scheduler and CLI may touch the same database.  WAL keeps
+  // readers responsive while BEGIN IMMEDIATE serializes update-lock changes;
+  // busy_timeout lets a simultaneous trigger wait briefly and then observe the
+  // existing lock instead of failing with SQLITE_BUSY.
+  db.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
   db.exec(schema);
   const columns = db.prepare("PRAGMA table_info(opportunities)").all();
   if (!columns.some((column) => column.name === "record_type")) {
@@ -621,4 +659,175 @@ export function saveUpdateSchedule(db, { enabled, times, updatedBy } = {}) {
 
 export function markScheduleTriggered(db, triggeredAt = new Date().toISOString()) {
   db.prepare("UPDATE update_schedule SET last_triggered_at = ? WHERE id = 1").run(triggeredAt);
+}
+
+function updateRun(row) {
+  if (!row) return null;
+  return {
+    runId: row.runId,
+    trigger: row.trigger,
+    requestedBy: row.requestedBy,
+    state: row.state,
+    startedAt: row.startedAt,
+    completedAt: row.completedAt,
+    heartbeatAt: row.heartbeatAt,
+    summary: row.summaryJson ? JSON.parse(row.summaryJson) : null,
+    error: row.error,
+  };
+}
+
+const updateRunSelect = `
+  SELECT run_id AS runId, trigger, requested_by AS requestedBy, state,
+    started_at AS startedAt, completed_at AS completedAt, heartbeat_at AS heartbeatAt,
+    summary_json AS summaryJson, error
+  FROM update_runs
+`;
+
+export function getUpdateRun(db, runId) {
+  if (typeof runId !== "string" || !runId) return null;
+  return updateRun(db.prepare(`${updateRunSelect} WHERE run_id = ?`).get(runId));
+}
+
+export function getLatestUpdateRun(db) {
+  return updateRun(db.prepare(`${updateRunSelect} ORDER BY started_at DESC LIMIT 1`).get());
+}
+
+export function getLockedUpdateRun(db) {
+  return updateRun(db.prepare(`
+    ${updateRunSelect}
+    WHERE run_id = (SELECT run_id FROM update_lock WHERE id = 1)
+  `).get());
+}
+
+export function appendUpdateEvent(db, runId, {
+  phase,
+  level = "info",
+  cityId = null,
+  sourceId = null,
+  message,
+  data = null,
+  occurredAt = new Date().toISOString(),
+} = {}) {
+  if (typeof phase !== "string" || !phase || typeof message !== "string" || !message) {
+    throw new Error("更新事件缺少阶段或事实说明");
+  }
+  const result = db.prepare(`
+    INSERT INTO update_events (
+      run_id, sequence, occurred_at, phase, level, city_id, source_id, message, data_json
+    )
+    SELECT ?, COALESCE(MAX(sequence), 0) + 1, ?, ?, ?, ?, ?, ?, ?
+    FROM update_events WHERE run_id = ?
+  `).run(runId, occurredAt, phase, level, cityId, sourceId, message.slice(0, 4_000), data == null ? null : json(data), runId);
+  if (!result.changes) throw new Error("无法写入更新事件");
+  const sequence = Number(db.prepare("SELECT MAX(sequence) AS sequence FROM update_events WHERE run_id = ?").get(runId).sequence);
+  db.prepare("UPDATE update_runs SET heartbeat_at = ? WHERE run_id = ?").run(occurredAt, runId);
+  db.prepare("UPDATE update_lock SET heartbeat_at = ? WHERE id = 1 AND run_id = ?").run(occurredAt, runId);
+  return sequence;
+}
+
+export function listUpdateEvents(db, runId, { after = 0, limit = 500 } = {}) {
+  const normalizedAfter = Math.max(0, Number.parseInt(after, 10) || 0);
+  const normalizedLimit = Math.max(1, Math.min(500, Number.parseInt(limit, 10) || 500));
+  return db.prepare(`
+    SELECT sequence, occurred_at AS occurredAt, phase, level, city_id AS cityId,
+      source_id AS sourceId, message, data_json AS dataJson
+    FROM update_events WHERE run_id = ? AND sequence > ?
+    ORDER BY sequence ASC LIMIT ?
+  `).all(runId, normalizedAfter, normalizedLimit).map((row) => ({
+    sequence: Number(row.sequence),
+    occurredAt: row.occurredAt,
+    phase: row.phase,
+    level: row.level,
+    cityId: row.cityId,
+    sourceId: row.sourceId,
+    message: row.message,
+    data: row.dataJson ? JSON.parse(row.dataJson) : null,
+  }));
+}
+
+export function heartbeatUpdateLock(db, runId, occurredAt = new Date().toISOString()) {
+  db.prepare("UPDATE update_runs SET heartbeat_at = ? WHERE run_id = ? AND state = 'running'").run(occurredAt, runId);
+  return Boolean(db.prepare("UPDATE update_lock SET heartbeat_at = ? WHERE id = 1 AND run_id = ?").run(occurredAt, runId).changes);
+}
+
+export function acquireUpdateLock(db, {
+  runId,
+  trigger,
+  requestedBy = null,
+  staleAfterMs = 5 * 60 * 1_000,
+  now = new Date(),
+} = {}) {
+  if (typeof runId !== "string" || !runId || typeof trigger !== "string" || !trigger) throw new Error("更新锁参数不完整");
+  const instant = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(instant.getTime())) throw new Error("更新锁时间无效");
+  const nowIso = instant.toISOString();
+  const staleBefore = new Date(instant.getTime() - staleAfterMs).toISOString();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const held = db.prepare("SELECT run_id AS runId, heartbeat_at AS heartbeatAt FROM update_lock WHERE id = 1").get();
+    if (held && held.heartbeatAt > staleBefore) {
+      db.exec("COMMIT");
+      return { acquired: false, run: getUpdateRun(db, held.runId) };
+    }
+    if (held) {
+      db.prepare(`
+        UPDATE update_runs SET state = 'failed', completed_at = ?, heartbeat_at = ?,
+          error = COALESCE(error, '服务心跳中断，旧更新锁已自动释放')
+        WHERE run_id = ? AND state = 'running'
+      `).run(nowIso, nowIso, held.runId);
+      appendUpdateEvent(db, held.runId, {
+        phase: "lock-expired",
+        level: "error",
+        message: "服务心跳中断，旧更新锁已自动释放。",
+        occurredAt: nowIso,
+      });
+      db.prepare("DELETE FROM update_lock WHERE id = 1").run();
+    }
+    db.prepare(`
+      INSERT INTO update_runs (
+        run_id, trigger, requested_by, state, started_at, heartbeat_at
+      ) VALUES (?, ?, ?, 'running', ?, ?)
+    `).run(runId, trigger, requestedBy, nowIso, nowIso);
+    db.prepare("INSERT INTO update_lock (id, run_id, acquired_at, heartbeat_at) VALUES (1, ?, ?, ?)")
+      .run(runId, nowIso, nowIso);
+    appendUpdateEvent(db, runId, {
+      phase: "run-start",
+      message: trigger === "schedule"
+        ? "定时更新已取得更新锁，开始执行。"
+        : trigger === "cli"
+          ? "命令行更新已取得更新锁，开始执行。"
+          : "管理员更新已取得更新锁，开始执行。",
+      data: { trigger },
+      occurredAt: nowIso,
+    });
+    db.exec("COMMIT");
+    return { acquired: true, run: getUpdateRun(db, runId) };
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export function finishUpdateRun(db, runId, { state, summary = null, error = null, completedAt = new Date().toISOString() } = {}) {
+  if (!["completed", "completed-partial", "failed"].includes(state)) throw new Error("更新结束状态无效");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    appendUpdateEvent(db, runId, {
+      phase: "run-finished",
+      level: state === "failed" ? "error" : state === "completed-partial" ? "warning" : "success",
+      message: state === "failed" ? `更新失败：${error || "未知错误"}` : state === "completed-partial" ? "更新部分完成，存在未导入城市。" : "四城更新已全部完成。",
+      data: summary ? { importedCityCount: summary.importedCityCount, failedCityCount: summary.failedCityCount } : null,
+      occurredAt: completedAt,
+    });
+    db.prepare(`
+      UPDATE update_runs SET state = ?, completed_at = ?, heartbeat_at = ?, summary_json = ?, error = ?
+      WHERE run_id = ?
+    `).run(state, completedAt, completedAt, summary == null ? null : json(summary), error, runId);
+    db.prepare("DELETE FROM update_lock WHERE id = 1 AND run_id = ?").run(runId);
+    db.exec("COMMIT");
+    return getUpdateRun(db, runId);
+  } catch (finishError) {
+    db.exec("ROLLBACK");
+    throw finishError;
+  }
 }
