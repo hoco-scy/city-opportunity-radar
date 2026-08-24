@@ -19,6 +19,11 @@ import {
   saveUpdateSchedule,
 } from "../db.mjs";
 import { createScheduleController, nextDailyRun } from "../scheduler.mjs";
+import {
+  isOpportunityWithinRetention,
+  opportunityRetentionInfo,
+  publicRetentionCutoff,
+} from "../retention.mjs";
 
 const projectRoot = resolve(new URL("../", import.meta.url).pathname);
 const collectorsRoot = resolve(projectRoot, "collectors");
@@ -67,6 +72,23 @@ test("accepts manually chosen user identifiers and keeps legacy favorite codes c
   assert.equal(isValidUserCode("short"), false);
   assert.equal(isValidUserCode("含中文的标识符"), false);
   assert.equal(isValidUserCode("space is invalid"), false);
+});
+
+test("keeps only information published within the latest six calendar months", () => {
+  const now = new Date("2026-08-24T12:00:00+08:00");
+  assert.equal(publicRetentionCutoff(now), "2026-02-24");
+  assert.equal(isOpportunityWithinRetention({ publishedAt: "2026-02-24" }, { now }), true);
+  assert.equal(isOpportunityWithinRetention({ publishedAt: "2026-02-23", verifiedAt: "2026-08-24" }, { now }), false);
+  assert.equal(isOpportunityWithinRetention({ checkedAt: "2026-08-23" }, { now }), true);
+  assert.equal(isOpportunityWithinRetention({ title: "没有任何可核验日期" }, { now }), false);
+  assert.deepEqual(opportunityRetentionInfo({ publishedAt: "2025-11-13", verifiedAt: "2026-08-24" }, { now }), {
+    keep: false,
+    date: "2025-11-13",
+    cutoff: "2026-02-24",
+    basis: "publishedAt",
+    hasPublicationDate: true,
+  });
+  assert.equal(publicRetentionCutoff(new Date("2026-08-31T12:00:00+08:00")), "2026-02-28");
 });
 
 test("computes the next daily run in Beijing time", () => {

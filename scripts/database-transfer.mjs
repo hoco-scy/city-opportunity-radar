@@ -3,6 +3,7 @@ import { backup, DatabaseSync } from "node:sqlite";
 import { chmod, copyFile, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { assertAnonymousPayload, openRadarDatabase } from "../db.mjs";
+import { isDateWithinRetention, isOpportunityWithinRetention } from "../retention.mjs";
 
 export const PUBLIC_DATA_FORMAT = "menglin-opportunity-radar-public-data";
 export const PUBLIC_DATA_VERSION = 1;
@@ -172,19 +173,34 @@ function decodeRows(rows, jsonColumns = {}) {
   });
 }
 
+function retainedOpportunityRow(row, now) {
+  return isOpportunityWithinRetention({
+    ...row.payload,
+    verifiedAt: row.payload?.verifiedAt ?? row.verified_at,
+  }, { now });
+}
+
 function publicDatasetFromDatabase(db) {
   db.exec("BEGIN");
   try {
+    const now = new Date();
+    const opportunities = decodeRows(db.prepare("SELECT city_id, opportunity_id, record_type, track, organization, title, exact_title, location, deadline, status, priority, match_level, source_id, official_announcement_url, official_apply_url, verified_at, payload_json FROM opportunities ORDER BY city_id, opportunity_id").all(), { payload_json: "payload" })
+      .filter((row) => retainedOpportunityRow(row, now));
+    const syncRuns = decodeRows(db.prepare("SELECT city_id, run_id, checked_at, status, outcome, scope, summary, payload_json FROM sync_runs ORDER BY city_id, checked_at, run_id").all(), { payload_json: "payload" })
+      .filter((row) => isDateWithinRetention(row.checked_at, { now }));
+    const retainedRunIds = new Set(syncRuns.map((row) => `${row.city_id}\u0000${row.run_id}`));
+    const sourceChecks = decodeRows(db.prepare("SELECT city_id, run_id, source_id, status, checked_at, note, payload_json FROM source_checks ORDER BY city_id, run_id, source_id").all(), { payload_json: "payload" })
+      .filter((row) => retainedRunIds.has(`${row.city_id}\u0000${row.run_id}`));
     const dataset = {
       format: PUBLIC_DATA_FORMAT,
       version: PUBLIC_DATA_VERSION,
       exportedAt: new Date().toISOString(),
       tables: {
         cities: db.prepare("SELECT id, name, accent, description, updated_at FROM cities ORDER BY id").all(),
-        opportunities: decodeRows(db.prepare("SELECT city_id, opportunity_id, record_type, track, organization, title, exact_title, location, deadline, status, priority, match_level, source_id, official_announcement_url, official_apply_url, verified_at, payload_json FROM opportunities ORDER BY city_id, opportunity_id").all(), { payload_json: "payload" }),
+        opportunities,
         sources: decodeRows(db.prepare("SELECT city_id, source_id, organization, type, role, tier, cadence, coverage_json, entry_url, collection_entry_url, collection_access_mode, collection_note, payload_json FROM sources ORDER BY city_id, source_id").all(), { coverage_json: "coverage", payload_json: "payload" }),
-        syncRuns: decodeRows(db.prepare("SELECT city_id, run_id, checked_at, status, outcome, scope, summary, payload_json FROM sync_runs ORDER BY city_id, checked_at, run_id").all(), { payload_json: "payload" }),
-        sourceChecks: decodeRows(db.prepare("SELECT city_id, run_id, source_id, status, checked_at, note, payload_json FROM source_checks ORDER BY city_id, run_id, source_id").all(), { payload_json: "payload" }),
+        syncRuns,
+        sourceChecks,
       },
     };
     db.exec("COMMIT");
@@ -234,7 +250,12 @@ export async function importPublicData({ input, target, confirmStopped = false }
   const dataset = JSON.parse(await readFile(inputPath, "utf8"));
   validatePublicDataset(dataset);
   await prepareRestoreTarget(targetPath, confirmStopped);
-  const { cities, opportunities, sources, syncRuns, sourceChecks } = dataset.tables;
+  const { cities, sources } = dataset.tables;
+  const now = new Date();
+  const opportunities = dataset.tables.opportunities.filter((row) => retainedOpportunityRow(row, now));
+  const syncRuns = dataset.tables.syncRuns.filter((row) => isDateWithinRetention(row.checked_at, { now }));
+  const retainedRunIds = new Set(syncRuns.map((row) => `${row.city_id}\u0000${row.run_id}`));
+  const sourceChecks = dataset.tables.sourceChecks.filter((row) => retainedRunIds.has(`${row.city_id}\u0000${row.run_id}`));
   const db = openRadarDatabase(targetPath);
   const retainedFavorites = db.prepare("SELECT user_code_hash, city_id, opportunity_id, created_at FROM favorites").all();
   const insertCity = db.prepare("INSERT INTO cities (id, name, accent, description, updated_at) VALUES (?, ?, ?, ?, ?)");

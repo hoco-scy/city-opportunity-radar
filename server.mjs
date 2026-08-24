@@ -23,6 +23,7 @@ import {
   listSources,
   listUpdateEvents,
   openRadarDatabase,
+  prunePublicRetention,
   removeFavorite,
   revokeAdminSession,
   saveUpdateSchedule,
@@ -292,6 +293,7 @@ export function createRadarServer({
   schedulerEnabled = true,
 } = {}) {
   const db = openRadarDatabase(databasePath);
+  prunePublicRetention(db);
   ensureBootstrapAdmin(db, bootstrapAdmin);
   const syncController = createSyncController({ db, databasePath, collectorsRoot, syncRunner });
   const scheduleController = createScheduleController({ db, syncController, timersEnabled: schedulerEnabled });

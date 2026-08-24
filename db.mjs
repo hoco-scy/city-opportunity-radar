@@ -2,6 +2,13 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import {
+  isDateWithinRetention,
+  isOpportunityWithinRetention,
+  opportunityRetentionInfo,
+  PUBLIC_RETENTION_MONTHS,
+  publicRetentionCutoff,
+} from "./retention.mjs";
 
 export const CITY_CATALOG = [
   { id: "beijing", name: "北京", accent: "#143745", description: "国考、京考、选调优培、事业单位与央国企岗位" },
@@ -352,6 +359,7 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
 
     for (const [recordType, items] of [["job", opportunities.jobs ?? []], ["candidate", opportunities.candidates ?? []], ["monitor", opportunities.monitors ?? []]]) {
       for (const item of items) {
+        if (!isOpportunityWithinRetention(item, { now: new Date(importedAt) })) continue;
         if (recordType === "job" && !isPubliclyDisplayableOpportunity(item)) continue;
         if (recordType === "candidate" && !isProfileRelevantOpportunity(item)) continue;
         const row = opportunityRow(cityId, item, recordType);
@@ -379,6 +387,7 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
 
     for (const run of reviewLog.runs ?? []) {
       const checkedAt = run.checkedAt ?? reviewLog.meta?.lastRunAt ?? importedAt;
+      if (!isDateWithinRetention(checkedAt, { now: new Date(importedAt) })) continue;
       insertRun.run(
         cityId, run.id, checkedAt, run.status ?? "unknown", run.outcome ?? null,
         run.scope ?? null, run.summary ?? null, json(run),
@@ -395,6 +404,57 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
     db.exec("ROLLBACK");
     throw error;
   }
+}
+
+export function prunePublicRetention(db, { now = new Date(), months = PUBLIC_RETENTION_MONTHS } = {}) {
+  const cutoff = publicRetentionCutoff(now, months);
+  const rows = db.prepare(`
+    SELECT city_id, opportunity_id, record_type, verified_at, payload_json FROM opportunities
+  `).all();
+  const deleteOpportunity = db.prepare("DELETE FROM opportunities WHERE city_id = ? AND opportunity_id = ?");
+  const deletedByType = { job: 0, candidate: 0, monitor: 0 };
+  let deletedFavorites = 0;
+  let deletedRuns = 0;
+  let deletedUpdateRuns = 0;
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const row of rows) {
+      const payload = JSON.parse(row.payload_json);
+      const retention = opportunityRetentionInfo({ ...payload, verifiedAt: payload.verifiedAt ?? row.verified_at }, { now, months });
+      if (retention.keep) continue;
+      const favoriteCount = Number(db.prepare(`
+        SELECT COUNT(*) AS count FROM favorites WHERE city_id = ? AND opportunity_id = ?
+      `).get(row.city_id, row.opportunity_id).count);
+      deletedFavorites += favoriteCount;
+      deleteOpportunity.run(row.city_id, row.opportunity_id);
+      deletedByType[row.record_type] = (deletedByType[row.record_type] ?? 0) + 1;
+    }
+    deletedRuns = Number(db.prepare("SELECT COUNT(*) AS count FROM sync_runs WHERE checked_at < ?").get(cutoff).count);
+    db.prepare("DELETE FROM sync_runs WHERE checked_at < ?").run(cutoff);
+    deletedUpdateRuns = Number(db.prepare(`
+      SELECT COUNT(*) AS count FROM update_runs
+      WHERE started_at < ? AND run_id NOT IN (SELECT run_id FROM update_lock)
+    `).get(cutoff).count);
+    db.prepare(`
+      DELETE FROM update_runs
+      WHERE started_at < ? AND run_id NOT IN (SELECT run_id FROM update_lock)
+    `).run(cutoff);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  return {
+    months,
+    cutoff,
+    deletedOpportunities: Object.values(deletedByType).reduce((sum, count) => sum + count, 0),
+    deletedByType,
+    deletedFavorites,
+    deletedRuns,
+    deletedUpdateRuns,
+    remainingOpportunities: Number(db.prepare("SELECT COUNT(*) AS count FROM opportunities").get().count),
+  };
 }
 
 function parsePayload(row) {

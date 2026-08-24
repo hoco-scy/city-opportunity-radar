@@ -34,13 +34,14 @@ export async function importCityCollectors({
         SELECT record_type AS recordType, COUNT(*) AS count
         FROM opportunities WHERE city_id = ? GROUP BY record_type
       `).all(cityId).map((row) => [row.recordType, Number(row.count)]));
+      const importedRuns = Number(db.prepare("SELECT COUNT(*) AS count FROM sync_runs WHERE city_id = ?").get(cityId).count);
       summary.push({
         cityId,
         jobs: importedCounts.job ?? 0,
         candidates: importedCounts.candidate ?? 0,
         monitors: importedCounts.monitor ?? 0,
         sources: registry.sources?.length ?? 0,
-        runs: reviewLog.runs?.length ?? 0,
+        runs: importedRuns,
       });
     }
     return summary;

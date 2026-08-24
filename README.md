@@ -10,6 +10,7 @@
 - `npm run collectors:install`：安装四座城市采集器的固定依赖。
 - `npm run collectors:test`：验证四座城市的采集器和来源路由。
 - `npm run db:import:collectors`：只把仓库内四城采集快照导入统一数据库，不执行采集。
+- `npm run db:prune`：按北京时间清理六个月以前发布的岗位、公告与更新记录。全量更新和公开数据导入也会自动执行同一保留规则；发布日期优先于最近核验时间，避免旧岗位因重复核验被误当成新信息。
 - `npm run db:export` / `npm run db:restore`：一致地备份或恢复完整 SQLite 数据库。
 - `npm run data:export` / `npm run data:import`：迁移不含收藏、管理员和更新控制数据的公开数据包。
 - `npm start`：启动本地服务。

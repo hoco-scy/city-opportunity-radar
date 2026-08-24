@@ -18,10 +18,12 @@ import {
   acquireUpdateLock,
   appendUpdateEvent,
   CITY_CATALOG,
+  closeDatabase,
   defaultDatabasePath,
   finishUpdateRun,
   heartbeatUpdateLock,
   openRadarDatabase,
+  prunePublicRetention,
 } from "../db.mjs";
 import { importCityCollectors } from "./import-city-collectors.mjs";
 
@@ -190,6 +192,19 @@ export async function runAllCitiesSync({
       });
     }
   }
+  const retentionDb = openRadarDatabase(databasePath);
+  let retention;
+  try {
+    retention = prunePublicRetention(retentionDb);
+  } finally {
+    closeDatabase(retentionDb);
+  }
+  onProgress({
+    phase: "retention-complete",
+    level: "success",
+    message: `最近六个月保留规则已执行，本轮清理 ${retention.deletedOpportunities} 条过期信息。`,
+    data: retention,
+  });
   const completedAt = new Date().toISOString();
   const summary = {
     startedCityCount: selectedCities.length,
@@ -197,6 +212,7 @@ export async function runAllCitiesSync({
     failedCityCount: outcomes.length - importedIds.length,
     outcomes,
     imported,
+    retention,
     completedAt,
   };
   onProgress({ phase: "workflow-complete", level: summary.failedCityCount ? "warning" : "success", message: `完整更新执行结束：导入 ${summary.importedCityCount} 个城市，失败 ${summary.failedCityCount} 个城市。`, data: { importedCityCount: summary.importedCityCount, failedCityCount: summary.failedCityCount } });
