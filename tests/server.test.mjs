@@ -10,8 +10,10 @@ import {
   acquireUpdateLock,
   finishUpdateRun,
   getUpdateRun,
+  isProfileRelevantOpportunity,
   isPubliclyDisplayableOpportunity,
   listUpdateEvents,
+  normalizePublicLocation,
   openRadarDatabase,
 } from "../db.mjs";
 import { nextDailyRun } from "../scheduler.mjs";
@@ -25,9 +27,13 @@ async function request(base, path, options) {
   return { response, body: await response.json() };
 }
 
-test("publishes verified roles by official major eligibility, independently of job-title wording", () => {
+test("publishes eligible biomedical roles without mistaking computing disciplines for broad engineering", () => {
   assert.equal(isPubliclyDisplayableOpportunity({
-    track: "央国企", title: "人工智能工程师", majors: "生物医学工程、医学工程相关专业", responsibilities: ["开展通用算法研发"],
+    track: "央国企", title: "人工智能工程师（安全方向）", majors: "生物医学工程、医学工程相关专业", responsibilities: ["开展通用算法研发"],
+    officialApplyUrl: "https://example.gov.cn/apply", verification: { officialSource: true, specificPosition: true, eligibility: true, applicationPath: true },
+  }), false);
+  assert.equal(isPubliclyDisplayableOpportunity({
+    track: "央国企", title: "医学影像软件工程师", majors: "生物医学工程、医学工程相关专业", responsibilities: ["开发医学影像设备软件"],
     officialApplyUrl: "https://example.gov.cn/apply", verification: { officialSource: true, specificPosition: true, eligibility: true, applicationPath: true },
   }), true);
   assert.equal(isPubliclyDisplayableOpportunity({
@@ -43,6 +49,13 @@ test("publishes verified roles by official major eligibility, independently of j
     verification: { officialSource: true, specificPosition: true, applicationPath: true },
   }), false);
   assert.equal(isPubliclyDisplayableOpportunity({ track: "考公", title: "已通过资格门禁的岗位" }), true);
+  assert.equal(isProfileRelevantOpportunity({
+    track: "待确认线索", title: "软件开发工程师", majors: "计算机类；软件工程类；网络空间安全类",
+  }), false);
+  assert.equal(isProfileRelevantOpportunity({
+    track: "待确认线索", title: "设备工程师", majors: "工学门类；理工类",
+  }), true);
+  assert.equal(normalizePublicLocation("北京市大兴区；北京市；北京市大兴区；北京市"), "北京市大兴区");
 });
 
 test("computes the next daily run in Beijing time", () => {

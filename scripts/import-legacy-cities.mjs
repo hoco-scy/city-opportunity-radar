@@ -30,11 +30,15 @@ export async function importLegacyCities({
         readJson(resolve(sourceRoot, "review-log.json")),
       ]);
       replaceCitySnapshot(db, { cityId, opportunities, registry, reviewLog });
+      const importedCounts = Object.fromEntries(db.prepare(`
+        SELECT record_type AS recordType, COUNT(*) AS count
+        FROM opportunities WHERE city_id = ? GROUP BY record_type
+      `).all(cityId).map((row) => [row.recordType, Number(row.count)]));
       summary.push({
         cityId,
-        jobs: opportunities.jobs?.length ?? 0,
-        candidates: opportunities.candidates?.length ?? 0,
-        monitors: opportunities.monitors?.length ?? 0,
+        jobs: importedCounts.job ?? 0,
+        candidates: importedCounts.candidate ?? 0,
+        monitors: importedCounts.monitor ?? 0,
         sources: registry.sources?.length ?? 0,
         runs: reviewLog.runs?.length ?? 0,
       });

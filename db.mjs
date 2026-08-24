@@ -162,8 +162,14 @@ const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 // Publication eligibility is based on verified official qualification fields.
 // Job duties affect ranking in source-specific collectors; they never veto an
 // otherwise eligible major merely because the title lacks a medical keyword.
-const professionalQualificationPattern = /(专业不限|不限专业|不限制专业|专业不作限制|可不限专业|不设专业限制|生物医学工程|生物医工|医学工程|医疗器械工程|临床工程|医疗电子|医学影像工程|生物工程|生物技术|生物医药|生命科学|生物科学|生物类|医疗器械(?:类|工程|相关专业)?|工学(?:门类|全类|类|专业)|所有工学|理工(?:科|类|专业|背景|方向|等|及|、|，|\/|$)|工程(?:类|门类|学科))/;
+const directProfessionalQualificationPattern = /(专业不限|不限专业|不限制专业|专业不作限制|可不限专业|不设专业限制|生物医学工程|生物医工|医学工程|医疗器械工程|临床工程|医疗电子|医学影像工程|生物工程|生物技术|生物医药|生命科学|生物科学|生物类|医疗器械(?:类|工程|相关专业)?)/;
+// Broad terms must be complete qualification tokens.  Without boundaries,
+// “软件工程类” accidentally matched the trailing “工程类” and was treated as
+// if every engineering major were accepted.
+const broadProfessionalQualificationPattern = /(?:^|[；;、，,\s/（(])(?:工学(?:门类|全类|大类|类|专业)?|所有工学|理工(?:科|类|专业|背景|方向)|工程(?:类|门类|学科))(?=$|[；;、，,\s/）)及等])/;
 const professionalExclusionPattern = /(生物医学工程|生物医工|医学工程)(?:专业)?(?:除外|不(?:予|可|得)?报考|不接受|不招收)/;
+const pureComputingRolePattern = /(网络安全|信息安全|前端|后端|软件(?:开发|工程师|工程)|算法工程师|人工智能工程师|AI工程师|大模型|云计算|数据(?:开发|工程师)|程序员)/i;
+const biomedicalRoleBridgePattern = /(生物医学|医疗器械|医疗设备|医学影像|临床工程|体外诊断|IVD|生物信号|医学数据|智慧医疗|医疗软件|健康科技|生命科学)/i;
 
 function itemText(item, fields) {
   return fields.flatMap((field) => Array.isArray(item[field]) ? item[field] : [item[field]])
@@ -172,13 +178,34 @@ function itemText(item, fields) {
 
 export function isPubliclyDisplayableOpportunity(item) {
   if (!["央国企", "事业单位"].includes(item.track)) return true;
+  if (!isProfileRelevantOpportunity(item)) return false;
+  const verification = item.verification || {};
+  const official = verification.officialSource === true && (verification.specificPosition === true || verification.exactTitle === true);
+  const applicationPath = verification.applicationPath === true || Boolean(item.officialApplyUrl || item.officialAnnouncementUrl);
+  return official && applicationPath;
+}
+
+export function isProfileRelevantOpportunity(item) {
+  if (["考公", "选调优培"].includes(item.track)) return true;
   const qualification = itemText(item, ["majors", "requirements", "education"]);
   const verification = item.verification || {};
   if (professionalExclusionPattern.test(qualification) || verification.eligibility === false) return false;
-  const official = verification.officialSource === true && (verification.specificPosition === true || verification.exactTitle === true);
-  const applicationPath = verification.applicationPath === true || Boolean(item.officialApplyUrl || item.officialAnnouncementUrl);
-  const eligible = verification.eligibility === true || professionalQualificationPattern.test(qualification);
-  return official && applicationPath && eligible;
+  const eligible = verification.eligibility === true
+    || directProfessionalQualificationPattern.test(qualification)
+    || broadProfessionalQualificationPattern.test(qualification);
+  if (!eligible) return false;
+  const role = itemText(item, ["title", "exactTitle", "responsibilities", "duties", "description", "department"]);
+  return !pureComputingRolePattern.test(role) || biomedicalRoleBridgePattern.test(role);
+}
+
+export function normalizePublicLocation(value) {
+  if (value == null || value === "") return null;
+  const parts = (Array.isArray(value) ? value : String(value).split(/[；;、，,]+/))
+    .map((part) => String(part).replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const unique = [...new Set(parts)];
+  const mostSpecific = unique.filter((part) => !unique.some((candidate) => candidate !== part && candidate.startsWith(part)));
+  return (mostSpecific.length ? mostSpecific : unique).join("；") || null;
 }
 
 export function defaultDatabasePath(root = process.cwd()) {
@@ -241,6 +268,7 @@ function json(value) {
 }
 
 function opportunityRow(cityId, item, recordType) {
+  const normalizedItem = { ...item, location: normalizePublicLocation(item.location) };
   return {
     cityId,
     opportunityId: String(item.id),
@@ -249,7 +277,7 @@ function opportunityRow(cityId, item, recordType) {
     organization: item.organization ?? "官方未注明",
     title: item.title ?? item.exactTitle ?? "官方未注明岗位",
     exactTitle: item.exactTitle ?? null,
-    location: item.location ?? null,
+    location: normalizedItem.location,
     deadline: item.deadline ?? null,
     status: item.status ?? null,
     priority: Number.isFinite(item.priority) ? item.priority : 0,
@@ -258,7 +286,7 @@ function opportunityRow(cityId, item, recordType) {
     announcementUrl: item.officialAnnouncementUrl ?? null,
     applyUrl: item.officialApplyUrl ?? null,
     verifiedAt: item.verifiedAt ?? null,
-    payload: json(item),
+    payload: json(normalizedItem),
   };
 }
 
@@ -322,6 +350,7 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
     for (const [recordType, items] of [["job", opportunities.jobs ?? []], ["candidate", opportunities.candidates ?? []], ["monitor", opportunities.monitors ?? []]]) {
       for (const item of items) {
         if (recordType === "job" && !isPubliclyDisplayableOpportunity(item)) continue;
+        if (recordType === "candidate" && !isProfileRelevantOpportunity(item)) continue;
         const row = opportunityRow(cityId, item, recordType);
         insertOpportunity.run(
           row.cityId, row.opportunityId, row.recordType, row.track, row.organization, row.title, row.exactTitle,
