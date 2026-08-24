@@ -215,13 +215,17 @@ test("imports all four cities and exposes the unified public API", async (t) => 
     assert.equal(page.status, 200);
     assert.match(page.headers.get("content-type") ?? "", /^text\/html/);
     assert.equal(page.headers.get("cache-control"), "no-cache");
-    assert.match(await page.text(), expectedTitle);
+    const pageHtml = await page.text();
+    assert.match(pageHtml, expectedTitle);
+    assert.match(pageHtml, /class="topbar-actions"/);
+    assert.match(pageHtml, /data-admin-trigger/);
+    assert.match(pageHtml, /id="admin-dialog"/);
   }
   const clientScript = await fetch(`${base}/app.js`);
   assert.equal(clientScript.headers.get("cache-control"), "no-cache");
   const homepage = await (await fetch(`${base}/`)).text();
-  assert.match(homepage, /app\.js\?v=20260824\.3/);
-  assert.match(homepage, /sources\.html\?v=20260824\.3/);
+  assert.match(homepage, /app\.js\?v=20260824\.4/);
+  assert.match(homepage, /sources\.html\?v=20260824\.4/);
   assert.match(homepage, /更新控制台/);
   assert.doesNotMatch(homepage, /待确认线索|核验并发布岗位/);
 });

@@ -386,6 +386,11 @@ async function bootstrap() {
     renderCities();
     await loadFavorites();
     await loadPageData();
+    if (page === "jobs" && initialQuery.get("admin") === "1") {
+      const dialog = byId("admin-dialog");
+      if (dialog && !dialog.open) dialog.showModal();
+      if (state.adminSession) await loadAdminSchedule();
+    }
   } catch (error) {
     const firstContent = document.querySelector(".page-content, .opportunity-list");
     if (firstContent) firstContent.innerHTML = `<div class="empty-state"><strong>暂时无法读取数据</strong><p>${escapeHtml(error.message)}</p></div>`;
