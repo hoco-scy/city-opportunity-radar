@@ -474,8 +474,8 @@ function normalizeAdminUsername(username) {
 }
 
 function normalizeAdminPassword(password) {
-  if (typeof password !== "string" || password.length < 12 || password.length > 256) {
-    throw new Error("管理员密码需为 12–256 个字符");
+  if (typeof password !== "string" || password.length < 6 || password.length > 256) {
+    throw new Error("管理员密码至少需为 6 个字符");
   }
   return password;
 }

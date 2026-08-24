@@ -8,7 +8,7 @@
 
 ```bash
 npm run db:import:legacy
-RADAR_ADMIN_USERNAME=menglin-admin RADAR_ADMIN_PASSWORD='请换成至少 12 位的强密码' npm start
+RADAR_ADMIN_USERNAME=menglin-admin RADAR_ADMIN_PASSWORD='请设置管理员密码' npm start
 ```
 
 导入命令会读取四个城市站已经通过公开门禁的数据快照，写入本仓库被忽略的 `.data/menglin-opportunity-radar.sqlite`。数据库文件不能提交到公开仓库；它需要和服务一起保存在持久磁盘或挂载卷中。
@@ -19,7 +19,7 @@ RADAR_ADMIN_USERNAME=menglin-admin RADAR_ADMIN_PASSWORD='请换成至少 12 位�
 npm run db:import:legacy -- --from /path/to/city-radars
 ```
 
-管理员账号只会在空数据库第一次启动时由 `RADAR_ADMIN_USERNAME` 和 `RADAR_ADMIN_PASSWORD` 初始化。数据库只保存经 `scrypt` 派生的密码摘要；初始化成功后，即使继续保留这两个环境变量也不会重置密码。不要把密码写进仓库、日志或公开部署配置。迁移现有 SQLite 数据库到新服务器时，管理员账号会一同保留。
+管理员账号只会在空数据库第一次启动时由 `RADAR_ADMIN_USERNAME` 和 `RADAR_ADMIN_PASSWORD` 初始化。数据库只保存经 `scrypt` 派生的密码摘要；初始化成功后，即使继续保留这两个环境变量也不会重置密码。不要把密码写进仓库、日志或公开部署配置。迁移现有 SQLite 数据库到新服务器时，管理员账号会一同保留。密码至少 6 位；若网站经公网访问，应使用至少 16 位的随机强密码。
 
 ## 统一采集与更新
 
