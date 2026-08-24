@@ -16,10 +16,11 @@ import {
   listSources,
   openRadarDatabase,
   removeFavorite,
-  reviewCandidate,
   revokeAdminSession,
+  saveUpdateSchedule,
 } from "./db.mjs";
 import { runAllCitiesSync } from "./scripts/run-all-cities-sync.mjs";
+import { createScheduleController } from "./scheduler.mjs";
 
 const root = resolve(new URL(".", import.meta.url).pathname);
 const staticFiles = new Map([
@@ -90,20 +91,20 @@ function cityExists(db, cityId) {
 
 function createSyncController({ db, databasePath, legacyRoot, syncRunner }) {
   let active = null;
-  let status = { state: "idle", startedAt: null, completedAt: null, summary: null, error: null };
+  let status = { state: "idle", trigger: null, startedAt: null, completedAt: null, summary: null, error: null };
   return {
     current() { return status; },
-    start() {
+    start(trigger = "manual") {
       if (active) return { ...status, alreadyRunning: true };
-      status = { state: "running", startedAt: new Date().toISOString(), completedAt: null, summary: null, error: null };
+      status = { state: "running", trigger, startedAt: new Date().toISOString(), completedAt: null, summary: null, error: null };
       active = Promise.resolve()
         .then(() => syncRunner({ legacyRoot, databasePath }))
         .then((summary) => {
           db.exec("PRAGMA optimize");
-          status = { state: summary.failedCityCount ? "completed-partial" : "completed", startedAt: status.startedAt, completedAt: new Date().toISOString(), summary, error: null };
+          status = { state: summary.failedCityCount ? "completed-partial" : "completed", trigger: status.trigger, startedAt: status.startedAt, completedAt: new Date().toISOString(), summary, error: null };
         })
         .catch((error) => {
-          status = { state: "failed", startedAt: status.startedAt, completedAt: new Date().toISOString(), summary: null, error: error instanceof Error ? error.message : "统一更新失败" };
+          status = { state: "failed", trigger: status.trigger, startedAt: status.startedAt, completedAt: new Date().toISOString(), summary: null, error: error instanceof Error ? error.message : "统一更新失败" };
         })
         .finally(() => { active = null; });
       return { ...status, alreadyRunning: false };
@@ -120,7 +121,7 @@ function requireAdmin(req, res, db) {
   return session;
 }
 
-async function handleAdminApi(req, res, url, db, syncController) {
+async function handleAdminApi(req, res, url, db, syncController, scheduleController) {
   const { pathname } = url;
   if (req.method === "GET" && pathname === "/api/admin/status") {
     return sendJson(res, 200, { configured: isAdminConfigured(db) });
@@ -144,27 +145,22 @@ async function handleAdminApi(req, res, url, db, syncController) {
   if (!session) return;
   if (pathname === "/api/admin/sync") {
     if (req.method === "GET") return sendJson(res, 200, syncController.current());
-    if (req.method === "POST") return sendJson(res, 202, syncController.start());
+    if (req.method === "POST") return sendJson(res, 202, syncController.start("manual"));
     return sendError(res, 405, "不支持的请求方法");
   }
-  if (pathname === "/api/admin/candidate-reviews" && req.method === "POST") {
+  if (pathname === "/api/admin/schedule") {
+    if (req.method === "GET") return sendJson(res, 200, scheduleController.current());
+    if (req.method !== "PUT") return sendError(res, 405, "不支持的请求方法");
     const body = await readBody(req);
-    if (!cityExists(db, body.cityId) || typeof body.candidateId !== "string") return sendError(res, 400, "待确认线索不存在");
-    const result = reviewCandidate(db, {
-      cityId: body.cityId,
-      candidateId: body.candidateId,
-      reviewerUsername: session.username,
-      decision: body.decision,
-      details: body.details,
-    });
-    return sendJson(res, 200, result);
+    saveUpdateSchedule(db, { enabled: body.enabled, times: body.times, updatedBy: session.username });
+    return sendJson(res, 200, scheduleController.refresh());
   }
   return sendError(res, 404, "未找到管理员接口");
 }
 
-async function handleApi(req, res, url, db, syncController) {
+async function handleApi(req, res, url, db, syncController, scheduleController) {
   const { pathname, searchParams } = url;
-  if (pathname.startsWith("/api/admin/")) return handleAdminApi(req, res, url, db, syncController);
+  if (pathname.startsWith("/api/admin/")) return handleAdminApi(req, res, url, db, syncController, scheduleController);
   if (req.method === "GET" && pathname === "/api/health") {
     return sendJson(res, 200, { ok: true, database: "sqlite", cities: listCities(db).length });
   }
@@ -199,7 +195,7 @@ async function handleApi(req, res, url, db, syncController) {
       opportunities: listOpportunities(db, cityId, {
         track: searchParams.get("track"),
         q: searchParams.get("q"),
-        recordType: ["monitor", "candidate"].includes(kind) ? kind : "job",
+        recordType: ["monitor", "candidate", "job"].includes(kind) ? kind : "all",
       }),
     });
   }
@@ -235,21 +231,25 @@ export function createRadarServer({
   legacyRoot = process.env.RADAR_LEGACY_ROOT ?? resolve(root, ".."),
   bootstrapAdmin = { username: process.env.RADAR_ADMIN_USERNAME, password: process.env.RADAR_ADMIN_PASSWORD },
   syncRunner = runAllCitiesSync,
+  schedulerEnabled = true,
 } = {}) {
   const db = openRadarDatabase(databasePath);
   ensureBootstrapAdmin(db, bootstrapAdmin);
   const syncController = createSyncController({ db, databasePath, legacyRoot, syncRunner });
+  const scheduleController = createScheduleController({ db, syncController, timersEnabled: schedulerEnabled });
+  scheduleController.refresh();
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     try {
-      if (url.pathname.startsWith("/api/")) await handleApi(req, res, url, db, syncController);
+      if (url.pathname.startsWith("/api/")) await handleApi(req, res, url, db, syncController, scheduleController);
       else if (req.method === "GET" || req.method === "HEAD") await handleStatic(res, url.pathname);
       else sendError(res, 405, "不支持的请求方法");
     } catch (error) {
       if (!res.headersSent) sendError(res, 400, error instanceof Error ? error.message : "请求失败");
     }
   });
-  return { server, db };
+  server.on("close", () => scheduleController.stop());
+  return { server, db, syncController, scheduleController };
 }
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {

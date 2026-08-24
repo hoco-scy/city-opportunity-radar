@@ -112,19 +112,15 @@ const schema = `
   );
   CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires
     ON admin_sessions(expires_at);
-  CREATE TABLE IF NOT EXISTS candidate_reviews (
-    city_id TEXT NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
-    candidate_id TEXT NOT NULL,
-    decision TEXT NOT NULL CHECK(decision IN ('approved', 'rejected')),
-    reviewer_username TEXT NOT NULL REFERENCES admin_accounts(username),
-    reviewed_at TEXT NOT NULL,
-    note TEXT,
-    approved_opportunity_id TEXT,
-    payload_json TEXT NOT NULL,
-    PRIMARY KEY (city_id, candidate_id)
+  CREATE TABLE IF NOT EXISTS update_schedule (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0, 1)),
+    timezone TEXT NOT NULL DEFAULT 'Asia/Shanghai',
+    times_json TEXT NOT NULL DEFAULT '["09:00","14:00"]',
+    updated_at TEXT NOT NULL,
+    updated_by TEXT,
+    last_triggered_at TEXT
   );
-  CREATE INDEX IF NOT EXISTS idx_candidate_reviews_city_decision
-    ON candidate_reviews(city_id, decision, reviewed_at DESC);
 `;
 
 const forbiddenField = /^(candidateName|fullName|phone|email|birthDate|homeAddress|schoolName|studentId|idCard|portrait|avatar)$/i;
@@ -164,6 +160,10 @@ export function openRadarDatabase(filename = defaultDatabasePath()) {
   if (!columns.some((column) => column.name === "record_type")) {
     db.exec("ALTER TABLE opportunities ADD COLUMN record_type TEXT NOT NULL DEFAULT 'job'");
   }
+  db.prepare(`
+    INSERT OR IGNORE INTO update_schedule (id, enabled, timezone, times_json, updated_at)
+    VALUES (1, 0, 'Asia/Shanghai', '["09:00","14:00"]', ?)
+  `).run(new Date().toISOString());
   db.exec("CREATE INDEX IF NOT EXISTS idx_opportunities_city_record_type_priority ON opportunities(city_id, record_type, priority DESC)");
   db.exec("PRAGMA optimize");
   return db;
@@ -240,10 +240,12 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
   const deleteSourceChecks = db.prepare("DELETE FROM source_checks WHERE city_id = ?");
   const deleteRuns = db.prepare("DELETE FROM sync_runs WHERE city_id = ?");
   const deleteSources = db.prepare("DELETE FROM sources WHERE city_id = ?");
-  // Manually approved jobs live in the same public table but are not derived
-  // from a city snapshot.  Keep them through a scheduled re-import.
-  const deleteOpportunities = db.prepare("DELETE FROM opportunities WHERE city_id = ? AND COALESCE(source_id, '') != 'admin-review'");
-  const reviewedCandidate = db.prepare("SELECT 1 FROM candidate_reviews WHERE city_id = ? AND candidate_id = ?");
+  // Snapshot replacement cascades through favorites. Preserve favorites whose
+  // stable opportunity IDs still exist in the incoming snapshot.
+  const retainedFavorites = db.prepare(`
+    SELECT user_code_hash, opportunity_id, created_at FROM favorites WHERE city_id = ?
+  `).all(cityId);
+  const deleteOpportunities = db.prepare("DELETE FROM opportunities WHERE city_id = ?");
   const insertOpportunity = db.prepare(`
     INSERT INTO opportunities (
       city_id, opportunity_id, record_type, track, organization, title, exact_title, location, deadline,
@@ -265,6 +267,11 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
     INSERT INTO source_checks (city_id, run_id, source_id, status, checked_at, note, payload_json)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
+  const opportunityExists = db.prepare("SELECT 1 FROM opportunities WHERE city_id = ? AND opportunity_id = ?");
+  const restoreFavorite = db.prepare(`
+    INSERT OR IGNORE INTO favorites (user_code_hash, city_id, opportunity_id, created_at)
+    VALUES (?, ?, ?, ?)
+  `);
 
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -277,15 +284,17 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
     for (const [recordType, items] of [["job", opportunities.jobs ?? []], ["candidate", opportunities.candidates ?? []], ["monitor", opportunities.monitors ?? []]]) {
       for (const item of items) {
         if (recordType === "job" && !isPubliclyDisplayableOpportunity(item)) continue;
-        // Once an administrator has approved or rejected a platform lead, it
-        // must not silently return to the pending queue on the next scan.
-        if (recordType === "candidate" && reviewedCandidate.get(cityId, String(item.id))) continue;
         const row = opportunityRow(cityId, item, recordType);
         insertOpportunity.run(
           row.cityId, row.opportunityId, row.recordType, row.track, row.organization, row.title, row.exactTitle,
           row.location, row.deadline, row.status, row.priority, row.matchLevel, row.sourceId,
           row.announcementUrl, row.applyUrl, row.verifiedAt, row.payload,
         );
+      }
+    }
+    for (const favorite of retainedFavorites) {
+      if (opportunityExists.get(cityId, favorite.opportunity_id)) {
+        restoreFavorite.run(favorite.user_code_hash, cityId, favorite.opportunity_id, favorite.created_at);
       }
     }
 
@@ -338,9 +347,9 @@ const collectionMethodLabels = {
   "browser-antibot": "官网招聘入口人工浏览核验",
   "official-announcement-discovery": "官方公告发现与原文回溯",
   "public-filterable-list": "公开筛选列表与公告详情核验",
-  "script-buaa-public-filtered-discovery": "北航公开筛选脚本（待用户确认线索）",
-  "script-iguopin-public-filtered-discovery": "国聘公开筛选脚本（待用户确认线索）",
-  "script-ncss-public-filtered-discovery": "国家大学生就业服务平台公开筛选脚本（待用户确认线索）",
+  "script-buaa-public-filtered-discovery": "北航就业信息网公开筛选脚本",
+  "script-iguopin-public-filtered-discovery": "国聘公开筛选脚本",
+  "script-ncss-public-filtered-discovery": "国家大学生就业服务平台公开筛选脚本",
   "browser-platform-native-filter": "平台原生筛选与官方原文回溯",
   "unconfigured-route": "尚未配置自动采集路线",
 };
@@ -348,7 +357,7 @@ const collectionMethodLabels = {
 export function listCities(db) {
   return db.prepare(`
     SELECT c.id, c.name, c.accent, c.description, c.updated_at,
-      (SELECT COUNT(*) FROM opportunities o WHERE o.city_id = c.id AND o.record_type = 'job') AS opportunity_count,
+      (SELECT COUNT(*) FROM opportunities o WHERE o.city_id = c.id AND o.record_type IN ('job', 'candidate')) AS opportunity_count,
       (SELECT MAX(checked_at) FROM sync_runs r WHERE r.city_id = c.id) AS last_checked_at
     FROM cities c
     ORDER BY CASE c.id
@@ -356,10 +365,12 @@ export function listCities(db) {
   `).all();
 }
 
-export function listOpportunities(db, cityId, { track, q, recordType = "job" } = {}) {
+export function listOpportunities(db, cityId, { track, q, recordType = "all" } = {}) {
   const conditions = ["city_id = ?"];
   const values = [cityId];
-  if (recordType !== "all") {
+  if (recordType === "all") {
+    conditions.push("record_type IN ('job', 'candidate')");
+  } else {
     conditions.push("record_type = ?");
     values.push(recordType);
   }
@@ -373,11 +384,20 @@ export function listOpportunities(db, cityId, { track, q, recordType = "job" } =
     values.push(keyword, keyword, keyword, keyword);
   }
   const rows = db.prepare(`
-    SELECT payload_json FROM opportunities
+    SELECT record_type, payload_json FROM opportunities
     WHERE ${conditions.join(" AND ")}
     ORDER BY priority DESC, verified_at DESC, title ASC
   `).all(...values);
-  return rows.map(parsePayload);
+  return rows.map((row) => {
+    const payload = parsePayload(row);
+    if (row.record_type === "monitor") return payload;
+    return {
+      ...payload,
+      recordType: row.record_type,
+      evidenceStatus: row.record_type === "job" ? "official-verified" : "trusted-source",
+      evidenceLabel: row.record_type === "job" ? "官方信息已核验" : "可信来源收录",
+    };
+  });
 }
 
 export function listSources(db, cityId, view = "shortcut") {
@@ -504,29 +524,6 @@ function futureIso(hours) {
   return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 }
 
-function textField(value, label, { required = true, max = 2_000 } = {}) {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (required && !text) throw new Error(`请填写${label}`);
-  if (text.length > max) throw new Error(`${label}过长`);
-  return text || null;
-}
-
-function urlField(value, label, { required = true } = {}) {
-  const text = textField(value, label, { required, max: 2_000 });
-  if (!text) return null;
-  let parsed;
-  try { parsed = new URL(text); } catch { throw new Error(`${label}不是有效网址`); }
-  if (!/^https?:$/.test(parsed.protocol)) throw new Error(`${label}必须使用 http 或 https`);
-  return parsed.toString();
-}
-
-function lines(value, label) {
-  const text = textField(value, label);
-  const result = text.split(/\r?\n|；|;/).map((item) => item.trim()).filter(Boolean);
-  if (!result.length) throw new Error(`请填写${label}`);
-  return result.slice(0, 30);
-}
-
 export function isAdminConfigured(db) {
   return Number(db.prepare("SELECT COUNT(*) AS count FROM admin_accounts").get().count) > 0;
 }
@@ -586,111 +583,42 @@ export function revokeAdminSession(db, token) {
   db.prepare("DELETE FROM admin_sessions WHERE token_hash = ?").run(tokenHash(token));
 }
 
-function manualOpportunityId(cityId, candidateId) {
-  return `admin-verified-${createHash("sha256").update(`${cityId}:${candidateId}`).digest("hex").slice(0, 20)}`;
-}
-
-function reviewPayload(candidate, details, now) {
-  const track = textField(details.track, "岗位类别", { max: 24 });
-  if (!["考公", "选调优培", "央国企", "事业单位"].includes(track)) throw new Error("岗位类别不正确");
-  if (details.activeConfirmed !== true) throw new Error("请确认该岗位仍在有效期内或属于仍有效的预公告");
-  const opportunity = {
-    exactTitle: textField(details.exactTitle ?? candidate.exactTitle ?? candidate.title, "具体岗位名称"),
-    title: textField(details.exactTitle ?? candidate.exactTitle ?? candidate.title, "具体岗位名称"),
-    organization: textField(details.organization ?? candidate.organization, "招录单位"),
-    location: textField(details.location ?? candidate.location, "工作地点"),
-    deadline: textField(details.deadline ?? candidate.deadline, "报名或公告有效期"),
-    education: textField(details.education ?? candidate.education, "学历要求"),
-    majors: textField(details.majors ?? candidate.majors, "专业要求"),
-    responsibilities: lines(details.responsibilities, "岗位职责"),
-    requirements: lines(details.requirements, "其他报考条件"),
-    officialAnnouncementUrl: urlField(details.officialAnnouncementUrl, "官方公告链接"),
-    officialApplyUrl: urlField(details.officialApplyUrl, "官方报名或投递链接", { required: false }),
-    status: textField(details.status ?? "招聘中", "岗位状态", { max: 40 }),
-    matchReason: textField(details.matchReason, "收录理由", { max: 1_000 }),
-    jobCode: textField(details.jobCode, "岗位代码", { required: false, max: 200 }),
-    priority: Math.max(0, Math.min(100, Number.parseInt(details.priority, 10) || Number(candidate.priority) || 60)),
-    track,
-    matchLevel: "已核验",
-    sourceId: "admin-review",
-    verifiedAt: now,
-    tags: [...new Set([...(Array.isArray(candidate.tags) ? candidate.tags : []), "管理员核验", track])].slice(0, 10),
-    verification: {
-      officialSource: true,
-      exactTitle: true,
-      organization: true,
-      location: true,
-      deadline: true,
-      education: true,
-      majors: true,
-      responsibilities: true,
-      requirements: true,
-      activeConfirmed: true,
-    },
-  };
-  if (!opportunity.officialApplyUrl) opportunity.officialApplyUrl = opportunity.officialAnnouncementUrl;
-  return opportunity;
-}
-
-export function reviewCandidate(db, { cityId, candidateId, reviewerUsername, decision, details = {} } = {}) {
-  if (!["approved", "rejected"].includes(decision)) throw new Error("审核结论不正确");
-  const candidate = db.prepare("SELECT payload_json FROM opportunities WHERE city_id = ? AND opportunity_id = ? AND record_type = 'candidate'")
-    .get(cityId, candidateId);
-  if (!candidate) throw new Error("该待确认线索不存在，或已经完成审核");
-  const item = parsePayload(candidate);
-  const now = new Date().toISOString();
-  const note = textField(details.note, "审核说明", { required: decision === "rejected", max: 2_000 });
-  let published = null;
-
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    if (decision === "approved") {
-      const publicItem = reviewPayload(item, details, now);
-      publicItem.id = manualOpportunityId(cityId, candidateId);
-      assertAnonymousPayload(publicItem, "管理员核验岗位");
-      if (!isPubliclyDisplayableOpportunity(publicItem)) {
-        throw new Error("央国企或事业单位岗位缺少官方具体岗位、投递路径或生物医学工程可报的专业资格依据，不能发布");
-      }
-      const row = opportunityRow(cityId, publicItem, "job");
-      db.prepare(`
-        INSERT INTO opportunities (
-          city_id, opportunity_id, record_type, track, organization, title, exact_title, location, deadline,
-          status, priority, match_level, source_id, official_announcement_url, official_apply_url,
-          verified_at, payload_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(city_id, opportunity_id) DO UPDATE SET
-          track = excluded.track, organization = excluded.organization, title = excluded.title,
-          exact_title = excluded.exact_title, location = excluded.location, deadline = excluded.deadline,
-          status = excluded.status, priority = excluded.priority, match_level = excluded.match_level,
-          official_announcement_url = excluded.official_announcement_url,
-          official_apply_url = excluded.official_apply_url, verified_at = excluded.verified_at,
-          payload_json = excluded.payload_json
-      `).run(
-        row.cityId, row.opportunityId, row.recordType, row.track, row.organization, row.title, row.exactTitle,
-        row.location, row.deadline, row.status, row.priority, row.matchLevel, row.sourceId,
-        row.announcementUrl, row.applyUrl, row.verifiedAt, row.payload,
-      );
-      db.prepare("UPDATE favorites SET opportunity_id = ? WHERE city_id = ? AND opportunity_id = ?")
-        .run(publicItem.id, cityId, candidateId);
-      published = publicItem;
-    }
-    db.prepare(`
-      INSERT INTO candidate_reviews (
-        city_id, candidate_id, decision, reviewer_username, reviewed_at, note, approved_opportunity_id, payload_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(city_id, candidate_id) DO UPDATE SET
-        decision = excluded.decision, reviewer_username = excluded.reviewer_username, reviewed_at = excluded.reviewed_at,
-        note = excluded.note, approved_opportunity_id = excluded.approved_opportunity_id, payload_json = excluded.payload_json
-    `).run(
-      cityId, candidateId, decision, reviewerUsername, now, note, published?.id ?? null,
-      json({ decision, reviewedAt: now, note, approvedOpportunityId: published?.id ?? null }),
-    );
-    db.prepare("DELETE FROM opportunities WHERE city_id = ? AND opportunity_id = ? AND record_type = 'candidate'")
-      .run(cityId, candidateId);
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
+export function normalizeScheduleTimes(times) {
+  if (!Array.isArray(times)) throw new Error("更新时间必须是数组");
+  const normalized = [...new Set(times.map((value) => typeof value === "string" ? value.trim() : ""))].sort();
+  if (!normalized.length || normalized.length > 8 || normalized.some((value) => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value))) {
+    throw new Error("请设置 1–8 个 HH:MM 格式的每日更新时间");
   }
-  return { decision, reviewedAt: now, opportunity: published };
+  return normalized;
+}
+
+export function getUpdateSchedule(db) {
+  const row = db.prepare(`
+    SELECT enabled, timezone, times_json, updated_at, updated_by, last_triggered_at
+    FROM update_schedule WHERE id = 1
+  `).get();
+  return {
+    enabled: Boolean(row.enabled),
+    timezone: row.timezone,
+    times: normalizeScheduleTimes(JSON.parse(row.times_json)),
+    updatedAt: row.updated_at,
+    updatedBy: row.updated_by,
+    lastTriggeredAt: row.last_triggered_at,
+  };
+}
+
+export function saveUpdateSchedule(db, { enabled, times, updatedBy } = {}) {
+  if (typeof enabled !== "boolean") throw new Error("请明确是否启用定时更新");
+  const normalizedTimes = normalizeScheduleTimes(times);
+  const now = new Date().toISOString();
+  db.prepare(`
+    UPDATE update_schedule
+    SET enabled = ?, timezone = 'Asia/Shanghai', times_json = ?, updated_at = ?, updated_by = ?
+    WHERE id = 1
+  `).run(enabled ? 1 : 0, json(normalizedTimes), now, updatedBy ?? null);
+  return getUpdateSchedule(db);
+}
+
+export function markScheduleTriggered(db, triggeredAt = new Date().toISOString()) {
+  db.prepare("UPDATE update_schedule SET last_triggered_at = ? WHERE id = 1").run(triggeredAt);
 }

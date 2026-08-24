@@ -7,6 +7,7 @@ import test from "node:test";
 import { createRadarServer } from "../server.mjs";
 import { importLegacyCities } from "../scripts/import-legacy-cities.mjs";
 import { isPubliclyDisplayableOpportunity } from "../db.mjs";
+import { nextDailyRun } from "../scheduler.mjs";
 
 const projectRoot = resolve(new URL("../", import.meta.url).pathname);
 const legacyRoot = resolve(projectRoot, "..");
@@ -37,6 +38,13 @@ test("publishes verified roles by official major eligibility, independently of j
   assert.equal(isPubliclyDisplayableOpportunity({ track: "考公", title: "已通过资格门禁的岗位" }), true);
 });
 
+test("computes the next daily run in Beijing time", () => {
+  const schedule = { enabled: true, timezone: "Asia/Shanghai", times: ["09:00", "14:00"] };
+  assert.equal(nextDailyRun(schedule, new Date("2026-08-24T00:30:00.000Z")).toISOString(), "2026-08-24T01:00:00.000Z");
+  assert.equal(nextDailyRun(schedule, new Date("2026-08-24T06:30:00.000Z")).toISOString(), "2026-08-25T01:00:00.000Z");
+  assert.equal(nextDailyRun({ ...schedule, enabled: false }, new Date("2026-08-24T00:30:00.000Z")), null);
+});
+
 test("imports all four cities and exposes the unified public API", async (t) => {
   const workdir = await mkdtemp(join(tmpdir(), "menglin-radar-"));
   const databasePath = join(workdir, "radar.sqlite");
@@ -55,6 +63,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
       syncCalls += 1;
       return { importedCityCount: 4, failedCityCount: 0, outcomes: [], imported: [], completedAt: new Date().toISOString() };
     },
+    schedulerEnabled: false,
   });
   t.after(() => { db.close(); });
   server.listen(0, "127.0.0.1");
@@ -77,7 +86,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.equal(cities.body.cities[0].id, "beijing");
   assert.ok(cities.body.cities.every((city) => city.name));
 
-  const jobs = await request(base, "/api/cities/beijing/opportunities?track=%E5%A4%AE%E5%9B%BD%E4%BC%81");
+  const jobs = await request(base, "/api/cities/beijing/opportunities?kind=job&track=%E5%A4%AE%E5%9B%BD%E4%BC%81");
   assert.equal(jobs.response.status, 200);
   assert.ok(jobs.body.opportunities.every((item) => item.track === "央国企"));
   assert.ok(jobs.body.opportunities.every(isPubliclyDisplayableOpportunity));
@@ -91,6 +100,13 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.equal(candidates.response.status, 200);
   assert.ok(candidates.body.opportunities.every((item) => item.status === "待用户确认"));
   assert.ok(candidates.body.opportunities.every((item) => item.manualConfirmationRequired === true));
+  assert.ok(candidates.body.opportunities.every((item) => item.evidenceStatus === "trusted-source"));
+
+  const unified = await request(base, "/api/cities/beijing/opportunities");
+  assert.equal(unified.response.status, 200);
+  assert.ok(unified.body.opportunities.some((item) => item.evidenceStatus === "official-verified"));
+  assert.ok(unified.body.opportunities.some((item) => item.evidenceStatus === "trusted-source"));
+  assert.equal(cities.body.cities[0].opportunity_count, unified.body.opportunities.length);
 
   const adminLogin = await request(base, "/api/admin/session", {
     method: "POST",
@@ -101,50 +117,34 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.match(adminLogin.body.token, /^mas_/);
   const adminHeaders = { "x-radar-admin-session": adminLogin.body.token, "content-type": "application/json" };
 
-  const candidate = candidates.body.opportunities[0];
-  const reviewed = await request(base, "/api/admin/candidate-reviews", {
+  const defaultSchedule = await request(base, "/api/admin/schedule", { headers: adminHeaders });
+  assert.equal(defaultSchedule.response.status, 200);
+  assert.equal(defaultSchedule.body.enabled, false);
+  assert.deepEqual(defaultSchedule.body.times, ["09:00", "14:00"]);
+
+  const savedSchedule = await request(base, "/api/admin/schedule", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({ enabled: true, times: ["14:00", "09:00", "09:00"] }),
+  });
+  assert.equal(savedSchedule.response.status, 200);
+  assert.equal(savedSchedule.body.enabled, true);
+  assert.deepEqual(savedSchedule.body.times, ["09:00", "14:00"]);
+  assert.match(savedSchedule.body.nextRunAt, /^\d{4}-\d{2}-\d{2}T/);
+
+  const invalidSchedule = await request(base, "/api/admin/schedule", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({ enabled: true, times: ["25:00"] }),
+  });
+  assert.equal(invalidSchedule.response.status, 400);
+
+  const removedReviewApi = await request(base, "/api/admin/candidate-reviews", {
     method: "POST",
     headers: adminHeaders,
-    body: JSON.stringify({
-      cityId: "beijing",
-      candidateId: candidate.id,
-      decision: "approved",
-      details: {
-        track: "央国企",
-        officialAnnouncementUrl: "https://careers.example.gov.cn/notice/1",
-        officialApplyUrl: "https://careers.example.gov.cn/apply/1",
-        exactTitle: "医学影像设备工程师",
-        organization: "某中央企业健康科技单位",
-        location: "北京",
-        deadline: "2026-12-31",
-        education: "硕士研究生及以上",
-        majors: "生物医学工程、医学工程相关专业",
-        responsibilities: "负责医学影像设备临床应用支持\n参与医疗器械测试验证",
-        requirements: "2027 年应届毕业生\n符合岗位其他资格条件",
-        status: "招聘中",
-        priority: 88,
-        matchReason: "官方岗位原文明确面向生物医学工程相关硕士，职责与医学影像设备临床应用直接相关。",
-        note: "测试：已核对公告、岗位要求与投递页。",
-        activeConfirmed: true,
-      },
-    }),
+    body: "{}",
   });
-  assert.equal(reviewed.response.status, 200);
-  assert.equal(reviewed.body.decision, "approved");
-  assert.equal(reviewed.body.opportunity.track, "央国企");
-
-  const candidatesAfterReview = await request(base, "/api/cities/beijing/opportunities?kind=candidate");
-  assert.ok(!candidatesAfterReview.body.opportunities.some((item) => item.id === candidate.id));
-  const reviewedJobs = await request(base, "/api/cities/beijing/opportunities?q=%E5%8C%BB%E5%AD%A6%E5%BD%B1%E5%83%8F%E8%AE%BE%E5%A4%87");
-  assert.ok(reviewedJobs.body.opportunities.some((item) => item.id === reviewed.body.opportunity.id));
-
-  // A later import replaces collector snapshots, but does not erase an
-  // administrator's decision or put the same candidate back into the queue.
-  await importLegacyCities({ legacyRoot, databasePath, cityIds: ["beijing"] });
-  const candidatesAfterImport = await request(base, "/api/cities/beijing/opportunities?kind=candidate");
-  assert.ok(!candidatesAfterImport.body.opportunities.some((item) => item.id === candidate.id));
-  const preservedJob = await request(base, "/api/cities/beijing/opportunities?q=%E5%8C%BB%E5%AD%A6%E5%BD%B1%E5%83%8F%E8%AE%BE%E5%A4%87");
-  assert.ok(preservedJob.body.opportunities.some((item) => item.id === reviewed.body.opportunity.id));
+  assert.equal(removedReviewApi.response.status, 404);
 
   const syncStart = await request(base, "/api/admin/sync", { method: "POST", headers: adminHeaders, body: "{}" });
   assert.equal(syncStart.response.status, 202);
@@ -172,9 +172,9 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const beijingSelection = collection.body.sources.find((item) => item.id === "beijing-selection-program");
   assert.equal(beijingSelection.organization, "北航就业信息网（公务员／选调生）");
   assert.match(beijingSelection.collectionEntryUrl, /^https:\/\/career\.buaa\.edu\.cn\//);
-  assert.equal(collection.body.sources.find((item) => item.id === "buaa-career-discovery")?.collectionMethod, "北航公开筛选脚本（待用户确认线索）");
-  assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "国聘公开筛选脚本（待用户确认线索）");
-  assert.equal(collection.body.sources.find((item) => item.id === "national-college-employment")?.collectionMethod, "国家大学生就业服务平台公开筛选脚本（待用户确认线索）");
+  assert.equal(collection.body.sources.find((item) => item.id === "buaa-career-discovery")?.collectionMethod, "北航就业信息网公开筛选脚本");
+  assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "国聘公开筛选脚本");
+  assert.equal(collection.body.sources.find((item) => item.id === "national-college-employment")?.collectionMethod, "国家大学生就业服务平台公开筛选脚本");
   for (const cityId of ["shanghai", "guangzhou", "shenzhen"]) {
     const cityCollection = await request(base, `/api/cities/${cityId}/sources?view=collection`);
     const selection = cityCollection.body.sources.find((item) => item.id === `${cityId}-selection-program`);
@@ -200,7 +200,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const denied = await request(base, "/api/favorites");
   assert.equal(denied.response.status, 401);
 
-  const job = announcements.body.opportunities[0];
+  const job = candidates.body.opportunities[0];
   const favoriteHeaders = { "x-radar-user-code": validCode, "content-type": "application/json" };
   const saved = await request(base, "/api/favorites", { method: "POST", headers: favoriteHeaders, body: JSON.stringify({ cityId: "beijing", opportunityId: job.id }) });
   assert.equal(saved.response.status, 201);
@@ -220,7 +220,8 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const clientScript = await fetch(`${base}/app.js`);
   assert.equal(clientScript.headers.get("cache-control"), "no-cache");
   const homepage = await (await fetch(`${base}/`)).text();
-  assert.match(homepage, /app\.js\?v=20260824\.2/);
-  assert.match(homepage, /sources\.html\?v=20260824\.2/);
-  assert.match(homepage, /核验并发布岗位/);
+  assert.match(homepage, /app\.js\?v=20260824\.3/);
+  assert.match(homepage, /sources\.html\?v=20260824\.3/);
+  assert.match(homepage, /更新控制台/);
+  assert.doesNotMatch(homepage, /待确认线索|核验并发布岗位/);
 });

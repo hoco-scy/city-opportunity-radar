@@ -12,7 +12,8 @@
     "db:import:legacy": "node scripts/import-legacy-cities.mjs",
     "sync:all-cities": "node scripts/run-all-cities-sync.mjs",
     "test": "node --test tests/server.test.mjs",
+    "validate:site": "node scripts/validate-site.mjs",
     "check:privacy": "node scripts/check-privacy.mjs",
-    "check": "npm run check:privacy && npm test"
+    "check": "npm run check:privacy && npm run validate:site && npm test"
   }
 }

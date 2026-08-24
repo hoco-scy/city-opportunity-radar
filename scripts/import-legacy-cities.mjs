@@ -55,5 +55,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     cityIds: city ? [city] : CITY_CATALOG.map((item) => item.id),
   });
   console.log(`已导入 ${summary.length} 个城市的公开数据：`);
-  for (const item of summary) console.log(`- ${item.cityId}：${item.jobs} 个已核验岗位、${item.candidates} 条待用户确认线索、${item.monitors} 个公告、${item.sources} 个信息源、${item.runs} 次更新记录`);
+  for (const item of summary) console.log(`- ${item.cityId}：${item.jobs} 个官方核验岗位、${item.candidates} 条可信来源岗位、${item.monitors} 个公告、${item.sources} 个信息源、${item.runs} 次更新记录`);
 }
