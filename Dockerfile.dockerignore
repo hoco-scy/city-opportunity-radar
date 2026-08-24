@@ -11,6 +11,7 @@
 !shenzhen-opportunity-radar-public/**
 **/.git
 **/.data
+**/backups
 **/node_modules
 **/.env
 **/.env.*

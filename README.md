@@ -6,6 +6,8 @@
 
 - `npm run sync:all-cities`：统一入口。依次运行四座城市的全量采集、各自的发布门禁，再把成功城市的快照导入 SQLite；某一城市失败不会阻断其余城市。
 - `npm run db:import:legacy`：只把四个既有城市站的公开快照迁入统一数据库，不执行采集。
+- `npm run db:export` / `npm run db:restore`：一致地备份或恢复完整 SQLite 数据库。
+- `npm run data:export` / `npm run data:import`：迁移不含收藏、管理员和更新控制数据的公开数据包。
 - `npm start`：启动本地服务。
 - `docker compose up -d --build`：把统一服务、四城市采集器和 SQLite 持久化卷部署到服务器。
 - `npm test`：导入四座城市并验证统一岗位 API、跨设备收藏、更新计划、事实日志、更新锁与网页资源。

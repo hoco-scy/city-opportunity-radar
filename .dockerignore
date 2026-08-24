@@ -1,5 +1,6 @@
 .git
 .data
+backups
 node_modules
 .env
 .env.*

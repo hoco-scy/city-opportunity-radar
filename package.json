@@ -10,8 +10,12 @@
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
     "db:import:legacy": "node scripts/import-legacy-cities.mjs",
+    "db:export": "node scripts/database-transfer-cli.mjs export",
+    "db:restore": "node scripts/database-transfer-cli.mjs restore",
+    "data:export": "node scripts/database-transfer-cli.mjs export-public",
+    "data:import": "node scripts/database-transfer-cli.mjs import-public",
     "sync:all-cities": "node scripts/run-all-cities-sync.mjs",
-    "test": "node --test tests/server.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "validate:site": "node scripts/validate-site.mjs",
     "check:privacy": "node scripts/check-privacy.mjs",
     "check": "npm run check:privacy && npm run validate:site && npm test"

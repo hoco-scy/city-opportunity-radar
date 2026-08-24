@@ -11,6 +11,7 @@ services:
       PORT: 3000
       RADAR_DB_PATH: /data/menglin-opportunity-radar.sqlite
       RADAR_LEGACY_ROOT: /radars
+      RADAR_BACKUP_DIR: /backups
       RADAR_IMPORT_ON_START: ${RADAR_IMPORT_ON_START:-1}
       RADAR_ADMIN_USERNAME: ${RADAR_ADMIN_USERNAME:-menglin-admin}
       RADAR_ADMIN_PASSWORD: ${RADAR_ADMIN_PASSWORD:?请在 .env 中设置管理员密码}
@@ -18,6 +19,7 @@ services:
       - "${RADAR_BIND_ADDRESS:-127.0.0.1}:${RADAR_PORT:-3000}:3000"
     volumes:
       - radar-data:/data
+      - ./backups:/backups
     stop_grace_period: 30s
 
 volumes:

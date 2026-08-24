@@ -21,6 +21,9 @@
 cd /srv/radars/city-opportunity-radar-public
 cp .env.example .env
 # 编辑 .env，务必替换 RADAR_ADMIN_PASSWORD
+mkdir -p backups
+sudo chown 1000:1000 backups
+chmod 700 backups
 docker compose up -d --build
 ```
 
@@ -73,6 +76,45 @@ npm run db:import:legacy -- --from /path/to/city-radars
 内置计时器依赖 Node 服务持续在线。也可以在部署平台使用 cron 作为额外兜底，但不要让两个调度器在同一分钟重复触发。
 
 无论使用内置计划还是外部任务，都必须使用与网页服务相同的 `RADAR_DB_PATH`（若未设置即仓库内 `.data/menglin-opportunity-radar.sqlite`），以便更新立即反映在网站上。
+
+## 数据备份、上传与恢复
+
+系统提供两种迁移文件：
+
+- 完整数据库备份是 SQLite 文件，包含岗位、来源、收藏、管理员账号摘要、更新计划与事实日志，用于整站搬迁；文件权限默认设为仅当前用户可读写。
+- 公开数据包是 JSON 文件，只包含城市、岗位、公告、来源和公开更新记录，不包含收藏、管理员、会话、定时计划或后台运行日志，适合在不同环境间同步公开数据。
+
+容器运行时，`./backups` 会映射到容器内的 `/backups`。完整备份可以在网站运行期间生成，底层使用 SQLite 在线备份接口读取同一个一致性快照：
+
+```bash
+docker compose exec radar npm run db:export
+```
+
+输出文件会出现在宿主机的 `backups/`。将它上传到服务器相同目录后，按以下顺序恢复：
+
+```bash
+docker compose stop radar
+docker compose run --rm -e RADAR_IMPORT_ON_START=0 radar \
+  npm run db:restore -- --input /backups/menglin-radar-full-时间.sqlite --confirm-stopped
+docker compose up -d radar
+```
+
+恢复命令会先做 SQLite 完整性和必要数据表检查，并在显式确认服务已停止后把可能残留的 WAL 安全 checkpoint 回主文件；数据库仍繁忙时会拒绝操作。替换前还会在 `backups/` 自动生成 `before-restore` 完整备份，因此可以回滚。不要跳过 `docker compose stop radar`，也不要在多个服务实例仍连接数据库时恢复。
+
+只迁移公开数据时使用：
+
+```bash
+docker compose exec radar npm run data:export
+
+docker compose stop radar
+docker compose run --rm -e RADAR_IMPORT_ON_START=0 radar \
+  npm run data:import -- --input /backups/menglin-radar-public-时间.json --confirm-stopped
+docker compose up -d radar
+```
+
+公开数据导入只替换公开表；服务器上已有的管理员账号、收藏、更新时间计划与后台运行日志会保留。收藏对应的岗位 ID 仍存在时，收藏关系也会保留。
+
+不使用 Docker 时，四条命令的默认目录是仓库内 `backups/`，也可使用 `--output`、`--input`、`--database` 和 `--backup-dir` 指定路径。完整恢复同样要求先停止 `npm start`，并显式传入 `--confirm-stopped`。
 
 ## 岗位证据状态
 

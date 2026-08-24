@@ -5,6 +5,7 @@ ENV NODE_ENV=production \
     PORT=3000 \
     RADAR_DB_PATH=/data/menglin-opportunity-radar.sqlite \
     RADAR_LEGACY_ROOT=/radars \
+    RADAR_BACKUP_DIR=/backups \
     RADAR_IMPORT_ON_START=1
 
 WORKDIR /app
@@ -21,8 +22,8 @@ COPY --chown=node:node shenzhen-opportunity-radar-public/ /radars/shenzhen-oppor
 RUN for city in beijing shanghai guangzhou shenzhen; do \
       cd "/radars/${city}-opportunity-radar-public" && npm ci --omit=dev --ignore-scripts; \
     done \
-    && mkdir -p /data \
-    && chown node:node /data \
+    && mkdir -p /data /backups \
+    && chown node:node /data /backups \
     && chmod 0755 /app/docker-entrypoint.sh
 
 USER node
