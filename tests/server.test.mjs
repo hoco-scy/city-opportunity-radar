@@ -10,6 +10,7 @@ import {
   acquireUpdateLock,
   finishUpdateRun,
   getUpdateRun,
+  isValidUserCode,
   isProfileRelevantOpportunity,
   isPubliclyDisplayableOpportunity,
   listUpdateEvents,
@@ -21,7 +22,7 @@ import { createScheduleController, nextDailyRun } from "../scheduler.mjs";
 
 const projectRoot = resolve(new URL("../", import.meta.url).pathname);
 const legacyRoot = resolve(projectRoot, "..");
-const validCode = `mlr_${"a".repeat(64)}`;
+const validCode = "menglin_user_2026";
 
 async function request(base, path, options) {
   const response = await fetch(`${base}${path}`, options);
@@ -57,6 +58,15 @@ test("publishes eligible biomedical roles without mistaking computing discipline
     track: "待确认线索", title: "设备工程师", majors: "工学门类；理工类",
   }), true);
   assert.equal(normalizePublicLocation("北京市大兴区；北京市；北京市大兴区；北京市"), "北京市大兴区");
+});
+
+test("accepts manually chosen user identifiers and keeps legacy favorite codes compatible", () => {
+  assert.equal(isValidUserCode("menglin_user_2026"), true);
+  assert.equal(isValidUserCode("user-01"), true);
+  assert.equal(isValidUserCode(`mlr_${"a".repeat(64)}`), true);
+  assert.equal(isValidUserCode("short"), false);
+  assert.equal(isValidUserCode("含中文的标识符"), false);
+  assert.equal(isValidUserCode("space is invalid"), false);
 });
 
 test("computes the next daily run in Beijing time", () => {
@@ -329,8 +339,12 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const clientScript = await fetch(`${base}/app.js`);
   assert.equal(clientScript.headers.get("cache-control"), "no-cache");
   const homepage = await (await fetch(`${base}/`)).text();
-  assert.match(homepage, /app\.js\?v=20260824\.5/);
-  assert.match(homepage, /sources\.html\?v=20260824\.5/);
+  assert.match(homepage, /app\.js\?v=20260824\.6/);
+  assert.match(homepage, /sources\.html\?v=20260824\.6/);
   assert.match(homepage, /更新控制台/);
+  assert.match(homepage, /本站不会自动生成标识符/);
   assert.doesNotMatch(homepage, /待确认线索|核验并发布岗位/);
+  const clientSource = await clientScript.text();
+  assert.doesNotMatch(clientSource, /crypto\.getRandomValues|function makeCode/);
+  assert.match(clientSource, /请先手动输入用户标识符/);
 });

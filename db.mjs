@@ -243,7 +243,10 @@ export function userCodeHash(code) {
 }
 
 export function isValidUserCode(code) {
-  return typeof code === "string" && /^mlr_[A-Za-z0-9_-]{40,160}$/.test(code);
+  // New identifiers are chosen and entered by the user. Keep accepting the
+  // longer legacy mlr_ tokens so existing cross-device favorites do not
+  // disappear after this migration.
+  return typeof code === "string" && /^(?:[A-Za-z0-9][A-Za-z0-9_-]{5,63}|mlr_[A-Za-z0-9_-]{40,160})$/.test(code);
 }
 
 export function assertAnonymousPayload(value, path = "root") {

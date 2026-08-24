@@ -19,24 +19,31 @@ const byId = (id) => document.getElementById(id);
 const escapeHtml = (value = "") => String(value).replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]);
 const dateLabel = (value) => value ? new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Shanghai" }).format(new Date(value)) : "暂无更新记录";
 const favoriteKey = (cityId, opportunityId) => `${cityId}:${opportunityId}`;
+const userIdentifierPattern = /^(?:[A-Za-z0-9][A-Za-z0-9_-]{5,63}|mlr_[A-Za-z0-9_-]{40,160})$/;
 
-function makeCode() {
-  const raw = Array.from(crypto.getRandomValues(new Uint8Array(32)), (number) => number.toString(16).padStart(2, "0")).join("");
-  return `mlr_${raw}`;
+function hasUserIdentifier() {
+  return userIdentifierPattern.test(state.code);
 }
 
-function ensureCode() {
-  if (!state.code) {
-    state.code = makeCode();
-    localStorage.setItem("menglin-radar-favorite-code", state.code);
-  }
-  return state.code;
+function showFavoriteDialog(message = "") {
+  const dialog = byId("favorite-dialog");
+  const input = byId("favorite-code");
+  const feedback = byId("code-feedback");
+  if (!dialog || !input || !feedback) return false;
+  input.value = state.code;
+  feedback.textContent = message;
+  dialog.showModal();
+  input.focus();
+  return true;
 }
 
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (options.body) headers.set("content-type", "application/json");
-  if (options.favorite) headers.set("x-radar-user-code", ensureCode());
+  if (options.favorite) {
+    if (!hasUserIdentifier()) throw new Error("请先手动输入用户标识符");
+    headers.set("x-radar-user-code", state.code);
+  }
   if (options.admin) {
     if (!state.adminSession) throw new Error("请先登录管理员账号");
     headers.set("x-radar-admin-session", state.adminSession);
@@ -48,6 +55,12 @@ async function api(path, options = {}) {
 }
 
 async function loadFavorites() {
+  if (!hasUserIdentifier()) {
+    state.favorites = new Set();
+    const count = byId("favorite-count");
+    if (count) count.textContent = "0";
+    return;
+  }
   const { favorites } = await api("/api/favorites", { favorite: true });
   state.favorites = new Set(favorites.map((item) => favoriteKey(item.cityId, item.opportunityId)));
   const count = byId("favorite-count");
@@ -75,7 +88,9 @@ function renderJobs(opportunities) {
     return state.track === "全部" || displayTrack(item) === state.track;
   });
   const emptyTitle = state.track === "我的收藏" ? "还没有收藏岗位" : "没有符合当前条件的岗位信息";
-  const emptyNote = state.track === "我的收藏" ? "点击岗位右上角的心形按钮，收藏会自动同步到这串收藏代码。" : "换一个赛道或关键词看看。";
+  const emptyNote = state.track === "我的收藏"
+    ? hasUserIdentifier() ? "点击岗位右上角的心形按钮，收藏会同步到当前用户标识符。" : "请先手动输入用户标识符，再同步跨设备收藏。"
+    : "换一个赛道或关键词看看。";
   list.innerHTML = filtered.length ? filtered.map(opportunityCard).join("") : `<div class="empty-state"><strong>${emptyTitle}</strong><p>${emptyNote}</p></div>`;
   document.querySelectorAll("[data-save]").forEach((button) => button.addEventListener("click", () => toggleFavorite(button.dataset.save)));
 }
@@ -178,6 +193,10 @@ async function selectCity(cityId) {
 }
 
 async function toggleFavorite(opportunityId) {
+  if (!hasUserIdentifier()) {
+    showFavoriteDialog("保存收藏前，请先输入你自己选定的用户标识符。");
+    return;
+  }
   const key = favoriteKey(state.cityId, opportunityId);
   const method = state.favorites.has(key) ? "DELETE" : "POST";
   try {
@@ -229,18 +248,23 @@ function setupFavoriteDialog() {
   // A missing optional dialog control should never prevent city data or
   // opportunities from rendering on the rest of the page.
   if (!input || !manage || !copy || !save || !feedback) return;
-  manage.addEventListener("click", () => { input.value = ensureCode(); feedback.textContent = ""; dialog.showModal(); });
+  manage.addEventListener("click", () => showFavoriteDialog());
   copy.addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(input.value); feedback.textContent = "已复制。请保存在可信的位置。"; }
-    catch { input.select(); feedback.textContent = "请手动复制这串代码。"; }
+    if (!input.value.trim()) { feedback.textContent = "请先输入用户标识符。"; return; }
+    try { await navigator.clipboard.writeText(input.value.trim()); feedback.textContent = "已复制。请保存在可信的位置。"; }
+    catch { input.select(); feedback.textContent = "请手动复制这串标识符。"; }
   });
   save.addEventListener("click", async () => {
-    if (!/^mlr_[A-Za-z0-9_-]{40,160}$/.test(input.value.trim())) { feedback.textContent = "这不是有效的收藏代码。"; return; }
+    if (!userIdentifierPattern.test(input.value.trim())) { feedback.textContent = "请输入 6–64 位英文、数字、下划线或连字符，并以英文或数字开头。"; return; }
     state.code = input.value.trim();
     localStorage.setItem("menglin-radar-favorite-code", state.code);
-    await loadFavorites();
-    await loadPageData();
-    feedback.textContent = "已同步这串代码对应的收藏。";
+    try {
+      await loadFavorites();
+      await loadPageData();
+      feedback.textContent = "已同步这个用户标识符对应的收藏。";
+    } catch (error) {
+      feedback.textContent = error.message;
+    }
   });
 }
 

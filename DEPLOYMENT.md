@@ -2,7 +2,41 @@
 
 这个仓库已从静态跳转页升级为 Node 服务：网页通过本服务的 API 读取 SQLite 数据库，四座城市共用同一个库。
 
-## 第一次运行
+## Docker 部署（推荐）
+
+服务器上先把五个仓库放在同一目录，目录名保持不变：
+
+```text
+/srv/radars/
+├── city-opportunity-radar-public/
+├── beijing-opportunity-radar-public/
+├── shanghai-opportunity-radar-public/
+├── guangzhou-opportunity-radar-public/
+└── shenzhen-opportunity-radar-public/
+```
+
+进入统一仓库，创建仅保存在服务器上的环境文件并启动：
+
+```bash
+cd /srv/radars/city-opportunity-radar-public
+cp .env.example .env
+# 编辑 .env，务必替换 RADAR_ADMIN_PASSWORD
+docker compose up -d --build
+```
+
+镜像构建时会把四城市采集器及其固定依赖一并装入，因此容器中的“立即全量更新”和每日更新计划不是静态演示。第一次启动且持久化数据库不存在时，入口脚本会自动导入镜像内的四城市快照；之后岗位、收藏、管理员账号、更新计划和事实日志都保存在 `radar-data` 卷中。重新构建镜像不会删除数据库。
+
+默认只把服务映射到服务器的 `127.0.0.1:3000`。启动后可检查：
+
+```bash
+curl http://127.0.0.1:3000/api/health
+docker compose ps
+docker compose logs -f radar
+```
+
+升级代码时更新五个仓库，再执行 `docker compose up -d --build`。不要使用 `docker compose down -v`，其中 `-v` 会删除收藏与更新计划所在的数据卷。部署只应保持一个 `radar` 实例；SQLite 更新锁不适合跨多台服务器共享。
+
+## 不使用 Docker 时第一次运行
 
 需要 Node.js 22.13 或更高版本。当前机器的四个旧城市站仍位于同一个 `Code` 目录时，在本仓库运行：
 
@@ -56,10 +90,10 @@ tailscale serve --https=443 http://127.0.0.1:3000
 
 ## 收藏与隐私
 
-收藏通过浏览器生成的 `mlr_...` 跨设备收藏代码同步。数据库只存代码的 SHA-256 摘要、岗位 ID 和创建时间；不保存姓名、邮箱、学校、联系方式或私有资格档案。
+收藏要求用户手动输入自己的标识符，网页不会自动生成。新标识符需为 6–64 位英文、数字、下划线或连字符，并以英文或数字开头；建议使用至少 12 位、难以被猜到且不包含姓名等个人信息的组合。数据库只存标识符的 SHA-256 摘要、岗位 ID 和创建时间；不保存姓名、邮箱、学校、联系方式或私有资格档案。旧版已经使用的 `mlr_...` 收藏代码仍可继续输入，以免已有收藏丢失。
 
-收藏代码具有登录凭证的效果：知道它的人可以查看和修改对应收藏。请只在受信任的设备或密码管理器中保存。后续引入正式登录时，可以把该代码作为一次性迁移凭证。
+用户标识符具有轻量登录凭证的效果：知道它的人可以查看和修改对应收藏。请只在受信任的设备或密码管理器中保存。后续引入正式登录时，可以把该标识符作为一次性迁移凭证。
 
 ## 数据保管
 
-`.data/menglin-opportunity-radar.sqlite` 同时保存公开岗位、收藏代码摘要、管理员密码摘要和自动更新计划。它不能提交到公开仓库，也不能作为静态文件对外暴露；部署时请把 `.data` 放在持久磁盘或挂载卷，并定期做受控备份。
+`.data/menglin-opportunity-radar.sqlite` 同时保存公开岗位、用户标识符摘要、管理员密码摘要和自动更新计划。它不能提交到公开仓库，也不能作为静态文件对外暴露；部署时请把 `.data` 放在持久磁盘或挂载卷，并定期做受控备份。

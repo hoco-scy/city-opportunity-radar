@@ -227,7 +227,7 @@ async function handleApi(req, res, url, db, syncController, scheduleController) 
   }
   if (pathname === "/api/favorites") {
     const code = userCode(req);
-    if (!code) return sendError(res, 401, "需要有效的跨设备收藏代码");
+    if (!code) return sendError(res, 401, "需要有效的用户标识符");
     if (req.method === "GET") return sendJson(res, 200, { favorites: listFavoriteIds(db, code) });
     const body = await readBody(req);
     if (req.method === "POST") {

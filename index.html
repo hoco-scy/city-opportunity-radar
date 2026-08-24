@@ -7,13 +7,13 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>岗位｜梦琳求职雷达</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="app.js?v=20260824.5" defer></script>
+    <script src="app.js?v=20260824.6" defer></script>
   </head>
   <body data-page="jobs">
     <header class="topbar">
-      <a class="brand" href="index.html?v=20260824.5" aria-label="梦琳求职雷达岗位页"><span>◎</span><strong>梦琳求职雷达</strong></a>
-      <nav aria-label="主导航"><a class="active" href="index.html?v=20260824.5">岗位</a><a href="announcements.html?v=20260824.5">考试公告</a><a href="sources.html?v=20260824.5">信息源</a><a href="updates.html?v=20260824.5">更新记录</a></nav>
-      <div class="topbar-actions"><button class="admin-trigger" data-admin-trigger type="button">管理员</button><a class="saved-trigger" href="index.html?v=20260824.5&favorites=1">我的收藏 <b id="favorite-count">0</b></a></div>
+      <a class="brand" href="index.html?v=20260824.6" aria-label="梦琳求职雷达岗位页"><span>◎</span><strong>梦琳求职雷达</strong></a>
+      <nav aria-label="主导航"><a class="active" href="index.html?v=20260824.6">岗位</a><a href="announcements.html?v=20260824.6">考试公告</a><a href="sources.html?v=20260824.6">信息源</a><a href="updates.html?v=20260824.6">更新记录</a></nav>
+      <div class="topbar-actions"><button class="admin-trigger" data-admin-trigger type="button">管理员</button><a class="saved-trigger" href="index.html?v=20260824.6&favorites=1">我的收藏 <b id="favorite-count">0</b></a></div>
     </header>
 
     <main id="top" class="shell">
@@ -56,8 +56,8 @@
           <section class="favorite-card">
             <p class="eyebrow">跨设备收藏</p>
             <h2>收藏不再只留在一台设备里</h2>
-            <p>用一枚仅你知道的收藏代码同步。服务器只保存代码摘要与岗位 ID，不保存个人资料。</p>
-            <button class="outline-button" id="manage-code" type="button">查看或输入收藏代码</button>
+            <p>请手动输入一个仅你知道的用户标识符。服务器只保存它的摘要与岗位 ID，不保存个人资料。</p>
+            <button class="outline-button" id="manage-code" type="button">输入或更换用户标识符</button>
           </section>
           <section class="source-summary">
             <p class="eyebrow">筛选方式</p>
@@ -77,11 +77,11 @@
     <dialog id="favorite-dialog" class="favorite-dialog" aria-labelledby="favorite-dialog-title">
       <form method="dialog" class="dialog-close"><button aria-label="关闭" type="submit">×</button></form>
       <p class="eyebrow">跨设备收藏</p>
-      <h2 id="favorite-dialog-title">收藏代码</h2>
-      <p>这串代码相当于收藏的钥匙。复制并保存在可信的位置；换设备时输入相同代码即可同步。</p>
-      <label for="favorite-code">收藏代码</label>
-      <input id="favorite-code" autocomplete="off" spellcheck="false" />
-      <div class="dialog-actions"><button class="primary-button" id="copy-code" type="button">复制代码</button><button class="outline-button" id="save-code" type="button">使用这串代码</button></div>
+      <h2 id="favorite-dialog-title">用户标识符</h2>
+      <p>本站不会自动生成标识符。请自行输入 6–64 位英文、数字、下划线或连字符；换设备时输入同一个标识符即可同步收藏。</p>
+      <label for="favorite-code">用户标识符</label>
+      <input id="favorite-code" autocomplete="off" spellcheck="false" minlength="6" maxlength="164" placeholder="例如 menglin_2026" />
+      <div class="dialog-actions"><button class="primary-button" id="copy-code" type="button">复制标识符</button><button class="outline-button" id="save-code" type="button">使用这个标识符</button></div>
       <p class="dialog-note" id="code-feedback" aria-live="polite"></p>
     </dialog>
     <dialog id="admin-dialog" class="favorite-dialog admin-dialog" aria-labelledby="admin-dialog-title">

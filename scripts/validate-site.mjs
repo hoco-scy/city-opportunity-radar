@@ -5,6 +5,8 @@ const subpages = await Promise.all(["announcements.html", "sources.html", "updat
   .map((filename) => readFile(new URL(`../${filename}`, import.meta.url), "utf8")));
 const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
 const server = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
+const dockerfile = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
+const compose = await readFile(new URL("../docker-compose.yml", import.meta.url), "utf8");
 
 if (!app.includes('api("/api/cities")')) throw new Error("页面没有从统一城市接口读取数据");
 if (!server.includes("recordType: [\"monitor\", \"candidate\", \"job\"].includes(kind) ? kind : \"all\"")) throw new Error("岗位接口没有默认合并证据层级");
@@ -14,6 +16,9 @@ if (!html.includes('src="assets/yier-bubu-authorized.jpeg"')) throw new Error("�
 if (!html.includes('id="update-schedule-times"') || !server.includes('"/api/admin/schedule"')) throw new Error("管理员更新计划链路不完整");
 if (!html.includes('id="sync-event-list"') || !app.includes("renderSyncStatus") || !server.includes("appendUpdateEvent")) throw new Error("管理员事实日志链路不完整");
 if (!server.includes("acquireUpdateLock") || !server.includes("alreadyRunning: true")) throw new Error("统一更新没有并发锁");
+if (app.includes("crypto.getRandomValues") || app.includes("function makeCode")) throw new Error("页面仍会自动生成收藏代码");
+if (!html.includes("本站不会自动生成标识符") || !app.includes("请先手动输入用户标识符")) throw new Error("用户标识符没有改为手动输入");
+if (!dockerfile.includes("RADAR_LEGACY_ROOT=/radars") || !compose.includes("radar-data:/data")) throw new Error("Docker 部署没有包含四城采集运行时或持久化数据库");
 if (/review-dialog|candidate-reviews/.test(html)) throw new Error("页面仍包含管理员岗位审核入口");
 if (subpages.some((content) => !content.includes('class="topbar-actions"') || !content.includes('data-admin-trigger') || !content.includes('id="admin-dialog"') || !content.includes('id="sync-event-list"'))) {
   throw new Error("子页面顶栏或管理员事实日志入口不完整");

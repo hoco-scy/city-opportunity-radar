@@ -1,0 +1,17 @@
+*
+!city-opportunity-radar-public/
+!city-opportunity-radar-public/**
+!beijing-opportunity-radar-public/
+!beijing-opportunity-radar-public/**
+!shanghai-opportunity-radar-public/
+!shanghai-opportunity-radar-public/**
+!guangzhou-opportunity-radar-public/
+!guangzhou-opportunity-radar-public/**
+!shenzhen-opportunity-radar-public/
+!shenzhen-opportunity-radar-public/**
+**/.git
+**/.data
+**/node_modules
+**/.env
+**/.env.*
+**/.DS_Store
