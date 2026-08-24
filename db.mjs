@@ -821,7 +821,7 @@ export function acquireUpdateLock(db, {
       .run(runId, nowIso, nowIso);
     appendUpdateEvent(db, runId, {
       phase: "run-start",
-      message: trigger === "schedule"
+      message: trigger.startsWith("schedule")
         ? "定时更新已取得更新锁，开始执行。"
         : trigger === "cli"
           ? "命令行更新已取得更新锁，开始执行。"

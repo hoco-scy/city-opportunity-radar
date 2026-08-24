@@ -113,8 +113,18 @@ export async function runAllCitiesSync({
             phase: "city-facts",
             cityId: city.id,
             message: latestRun.summary ?? `${city.name}已生成本轮事实记录。`,
-            data: { cityRunId: latestRun.id, checkedAt: latestRun.checkedAt, metrics: latestRun.metrics ?? null, screeningMetrics: latestRun.screeningMetrics ?? null },
+            data: { cityRunId: latestRun.id, checkedAt: latestRun.checkedAt, metrics: latestRun.metrics ?? null, screeningMetrics: latestRun.screeningMetrics ?? null, networkPolicy: latestRun.networkPolicy ?? null },
           });
+          if (latestRun.networkPolicy) {
+            const network = latestRun.networkPolicy;
+            onProgress({
+              phase: "network-policy",
+              cityId: city.id,
+              level: network.blocked || network.rateLimited ? "warning" : "info",
+              message: `${city.name}请求保护：${network.requests} 个逻辑请求、${network.retries} 次重试、${network.throttledWaits} 次限流等待；服务端限流 ${network.rateLimited} 次，访问控制 ${network.blocked} 次。`,
+              data: { networkPolicy: network },
+            });
+          }
           for (const check of latestRun.sourceChecks ?? []) {
             const sourceName = sourceNames.get(check.sourceId) ?? check.sourceId;
             onProgress({

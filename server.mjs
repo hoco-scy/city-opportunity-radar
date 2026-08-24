@@ -115,13 +115,30 @@ function createSyncController({ db, databasePath, legacyRoot, syncRunner }) {
     heartbeatTimer = null;
   }
 
+  function recordScheduledCollision(runId) {
+    if (!runId) return;
+    try {
+      appendUpdateEvent(db, runId, {
+        phase: "schedule-coalesced",
+        level: "warning",
+        message: "定时更新时间与正在执行的更新重叠，已合并为一次待补运行；不会并行抓取。",
+      });
+    } catch { /* 正在结束的任务可能刚刚释放锁；补跑控制器会再次尝试。 */ }
+  }
+
   return {
     current,
     start(trigger = "manual", requestedBy = null) {
-      if (active && activeRunId) return { ...current({ runId: activeRunId }), alreadyRunning: true };
+      if (active && activeRunId) {
+        if (trigger === "schedule") recordScheduledCollision(activeRunId);
+        return { ...current({ runId: activeRunId }), alreadyRunning: true };
+      }
       const runId = `update_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}_${randomUUID().slice(0, 8)}`;
       const lock = acquireUpdateLock(db, { runId, trigger, requestedBy });
-      if (!lock.acquired) return { ...current({ runId: lock.run?.runId }), alreadyRunning: true };
+      if (!lock.acquired) {
+        if (trigger === "schedule") recordScheduledCollision(lock.run?.runId);
+        return { ...current({ runId: lock.run?.runId }), alreadyRunning: true };
+      }
       activeRunId = runId;
       heartbeatTimer = setInterval(() => heartbeatUpdateLock(db, runId), 30_000);
       heartbeatTimer.unref?.();

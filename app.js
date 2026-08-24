@@ -370,7 +370,7 @@ const syncStateLabels = {
   "completed-partial": "部分完成",
   failed: "执行失败",
 };
-const syncTriggerLabels = { schedule: "定时触发", cli: "命令行触发", manual: "管理员触发" };
+const syncTriggerLabels = { schedule: "定时触发", "schedule-catchup": "定时补跑", cli: "命令行触发", manual: "管理员触发" };
 
 function renderSyncStatus(status, { reset = false } = {}) {
   const panel = byId("sync-progress");

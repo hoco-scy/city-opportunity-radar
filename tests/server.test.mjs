@@ -15,8 +15,9 @@ import {
   listUpdateEvents,
   normalizePublicLocation,
   openRadarDatabase,
+  saveUpdateSchedule,
 } from "../db.mjs";
-import { nextDailyRun } from "../scheduler.mjs";
+import { createScheduleController, nextDailyRun } from "../scheduler.mjs";
 
 const projectRoot = resolve(new URL("../", import.meta.url).pathname);
 const legacyRoot = resolve(projectRoot, "..");
@@ -63,6 +64,37 @@ test("computes the next daily run in Beijing time", () => {
   assert.equal(nextDailyRun(schedule, new Date("2026-08-24T00:30:00.000Z")).toISOString(), "2026-08-24T01:00:00.000Z");
   assert.equal(nextDailyRun(schedule, new Date("2026-08-24T06:30:00.000Z")).toISOString(), "2026-08-25T01:00:00.000Z");
   assert.equal(nextDailyRun({ ...schedule, enabled: false }, new Date("2026-08-24T00:30:00.000Z")), null);
+});
+
+test("定时触发撞锁后合并为一次补跑，而不是丢弃或并行", async (t) => {
+  const workdir = await mkdtemp(join(tmpdir(), "menglin-radar-catchup-"));
+  const databasePath = join(workdir, "radar.sqlite");
+  const db = openRadarDatabase(databasePath);
+  t.after(async () => rm(workdir, { recursive: true, force: true }));
+  t.after(() => db.close());
+  saveUpdateSchedule(db, { enabled: true, times: ["09:00"], updatedBy: "test" });
+
+  const realStartedAt = Date.now();
+  const virtualStartedAt = new Date("2026-08-24T00:59:59.990Z").getTime();
+  const triggers = [];
+  const controller = createScheduleController({
+    db,
+    now: () => new Date(virtualStartedAt + Date.now() - realStartedAt),
+    collisionRetryMs: 5,
+    syncController: {
+      start(trigger) {
+        triggers.push(trigger);
+        return { alreadyRunning: triggers.length === 1 };
+      }
+    }
+  });
+  t.after(() => controller.stop());
+  controller.refresh();
+  for (let attempt = 0; attempt < 30 && triggers.length < 2; attempt += 1) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 5));
+  }
+  assert.deepEqual(triggers, ["schedule", "schedule-catchup"]);
+  assert.equal(controller.current().catchupQueued, false);
 });
 
 test("uses one persistent update lock across database connections", async (t) => {

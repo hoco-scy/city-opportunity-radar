@@ -20,8 +20,10 @@ export function nextDailyRun(schedule, now = new Date()) {
   return null;
 }
 
-export function createScheduleController({ db, syncController, timersEnabled = true, now = () => new Date() }) {
+export function createScheduleController({ db, syncController, timersEnabled = true, now = () => new Date(), collisionRetryMs = 60_000 }) {
   let timer = null;
+  let catchupTimer = null;
+  let catchupQueued = false;
   let stopped = false;
 
   function clearTimer() {
@@ -29,22 +31,46 @@ export function createScheduleController({ db, syncController, timersEnabled = t
     timer = null;
   }
 
+  function clearCatchupTimer() {
+    if (catchupTimer) clearTimeout(catchupTimer);
+    catchupTimer = null;
+  }
+
   function current() {
     const schedule = getUpdateSchedule(db);
     const next = nextDailyRun(schedule, now());
-    return { ...schedule, nextRunAt: next?.toISOString() ?? null };
+    return { ...schedule, nextRunAt: next?.toISOString() ?? null, catchupQueued };
+  }
+
+  function queueCatchup() {
+    catchupQueued = true;
+    if (stopped || !timersEnabled || catchupTimer) return;
+    catchupTimer = setTimeout(() => {
+      catchupTimer = null;
+      if (stopped || !catchupQueued) return;
+      const result = syncController.start("schedule-catchup");
+      if (result?.alreadyRunning) queueCatchup();
+      else catchupQueued = false;
+    }, Math.max(1, collisionRetryMs));
+    catchupTimer.unref?.();
   }
 
   function arm() {
     clearTimer();
     const schedule = current();
-    if (stopped || !timersEnabled || !schedule.enabled || !schedule.nextRunAt) return schedule;
+    if (!schedule.enabled) {
+      clearCatchupTimer();
+      catchupQueued = false;
+      return { ...schedule, catchupQueued: false };
+    }
+    if (stopped || !timersEnabled || !schedule.nextRunAt) return schedule;
     const delay = Math.min(Math.max(new Date(schedule.nextRunAt).getTime() - now().getTime(), 1), MAX_TIMEOUT_MS);
     timer = setTimeout(() => {
       timer = null;
       const triggeredAt = now().toISOString();
       markScheduleTriggered(db, triggeredAt);
-      syncController.start("schedule");
+      const result = syncController.start("schedule");
+      if (result?.alreadyRunning) queueCatchup();
       arm();
     }, delay);
     timer.unref?.();
@@ -57,6 +83,8 @@ export function createScheduleController({ db, syncController, timersEnabled = t
     stop() {
       stopped = true;
       clearTimer();
+      clearCatchupTimer();
+      catchupQueued = false;
     },
   };
 }
