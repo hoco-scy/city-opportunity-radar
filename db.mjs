@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -97,6 +97,34 @@ const schema = `
   );
   CREATE INDEX IF NOT EXISTS idx_favorites_user_created
     ON favorites(user_code_hash, created_at DESC);
+  CREATE TABLE IF NOT EXISTS admin_accounts (
+    username TEXT PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    last_used_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS admin_sessions (
+    token_hash TEXT PRIMARY KEY,
+    username TEXT NOT NULL REFERENCES admin_accounts(username) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires
+    ON admin_sessions(expires_at);
+  CREATE TABLE IF NOT EXISTS candidate_reviews (
+    city_id TEXT NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+    candidate_id TEXT NOT NULL,
+    decision TEXT NOT NULL CHECK(decision IN ('approved', 'rejected')),
+    reviewer_username TEXT NOT NULL REFERENCES admin_accounts(username),
+    reviewed_at TEXT NOT NULL,
+    note TEXT,
+    approved_opportunity_id TEXT,
+    payload_json TEXT NOT NULL,
+    PRIMARY KEY (city_id, candidate_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_candidate_reviews_city_decision
+    ON candidate_reviews(city_id, decision, reviewed_at DESC);
 `;
 
 const forbiddenField = /^(candidateName|fullName|phone|email|birthDate|homeAddress|schoolName|studentId|idCard|portrait|avatar)$/i;
@@ -214,7 +242,10 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
   const deleteSourceChecks = db.prepare("DELETE FROM source_checks WHERE city_id = ?");
   const deleteRuns = db.prepare("DELETE FROM sync_runs WHERE city_id = ?");
   const deleteSources = db.prepare("DELETE FROM sources WHERE city_id = ?");
-  const deleteOpportunities = db.prepare("DELETE FROM opportunities WHERE city_id = ?");
+  // Manually approved jobs live in the same public table but are not derived
+  // from a city snapshot.  Keep them through a scheduled re-import.
+  const deleteOpportunities = db.prepare("DELETE FROM opportunities WHERE city_id = ? AND COALESCE(source_id, '') != 'admin-review'");
+  const reviewedCandidate = db.prepare("SELECT 1 FROM candidate_reviews WHERE city_id = ? AND candidate_id = ?");
   const insertOpportunity = db.prepare(`
     INSERT INTO opportunities (
       city_id, opportunity_id, record_type, track, organization, title, exact_title, location, deadline,
@@ -248,6 +279,9 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
     for (const [recordType, items] of [["job", opportunities.jobs ?? []], ["candidate", opportunities.candidates ?? []], ["monitor", opportunities.monitors ?? []]]) {
       for (const item of items) {
         if (recordType === "job" && !isPubliclyDisplayableOpportunity(item)) continue;
+        // Once an administrator has approved or rejected a platform lead, it
+        // must not silently return to the pending queue on the next scan.
+        if (recordType === "candidate" && reviewedCandidate.get(cityId, String(item.id))) continue;
         const row = opportunityRow(cityId, item, recordType);
         insertOpportunity.run(
           row.cityId, row.opportunityId, row.recordType, row.track, row.organization, row.title, row.exactTitle,
@@ -428,4 +462,233 @@ export function removeFavorite(db, code, cityId, opportunityId) {
   db.prepare(`
     DELETE FROM favorites WHERE user_code_hash = ? AND city_id = ? AND opportunity_id = ?
   `).run(userCodeHash(code), cityId, opportunityId);
+}
+
+const adminUsernamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/;
+const adminSessionPattern = /^mas_[A-Za-z0-9_-]{32,160}$/;
+
+function normalizeAdminUsername(username) {
+  const value = typeof username === "string" ? username.trim() : "";
+  if (!adminUsernamePattern.test(value)) throw new Error("管理员账号需为 3–64 位英文、数字、点、下划线或连字符");
+  return value;
+}
+
+function normalizeAdminPassword(password) {
+  if (typeof password !== "string" || password.length < 12 || password.length > 256) {
+    throw new Error("管理员密码需为 12–256 个字符");
+  }
+  return password;
+}
+
+function passwordHash(password) {
+  const salt = randomBytes(16).toString("base64url");
+  const digest = scryptSync(password, salt, 64).toString("base64url");
+  return `scrypt-v1:${salt}:${digest}`;
+}
+
+function passwordMatches(password, stored) {
+  const [version, salt, digest] = String(stored).split(":");
+  if (version !== "scrypt-v1" || !salt || !digest) return false;
+  const expected = Buffer.from(digest, "base64url");
+  const actual = scryptSync(password, salt, expected.length);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+function tokenHash(token) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function futureIso(hours) {
+  return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+}
+
+function textField(value, label, { required = true, max = 2_000 } = {}) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (required && !text) throw new Error(`请填写${label}`);
+  if (text.length > max) throw new Error(`${label}过长`);
+  return text || null;
+}
+
+function urlField(value, label, { required = true } = {}) {
+  const text = textField(value, label, { required, max: 2_000 });
+  if (!text) return null;
+  let parsed;
+  try { parsed = new URL(text); } catch { throw new Error(`${label}不是有效网址`); }
+  if (!/^https?:$/.test(parsed.protocol)) throw new Error(`${label}必须使用 http 或 https`);
+  return parsed.toString();
+}
+
+function lines(value, label) {
+  const text = textField(value, label);
+  const result = text.split(/\r?\n|；|;/).map((item) => item.trim()).filter(Boolean);
+  if (!result.length) throw new Error(`请填写${label}`);
+  return result.slice(0, 30);
+}
+
+export function isAdminConfigured(db) {
+  return Number(db.prepare("SELECT COUNT(*) AS count FROM admin_accounts").get().count) > 0;
+}
+
+export function createAdminAccount(db, { username, password, replace = false } = {}) {
+  const normalizedUsername = normalizeAdminUsername(username);
+  const normalizedPassword = normalizeAdminPassword(password);
+  const now = new Date().toISOString();
+  const existing = db.prepare("SELECT username FROM admin_accounts WHERE username = ?").get(normalizedUsername);
+  if (existing && !replace) throw new Error("该管理员账号已经存在");
+  if (existing) {
+    db.prepare("UPDATE admin_accounts SET password_hash = ?, updated_at = ? WHERE username = ?")
+      .run(passwordHash(normalizedPassword), now, normalizedUsername);
+  } else {
+    db.prepare("INSERT INTO admin_accounts (username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?)")
+      .run(normalizedUsername, passwordHash(normalizedPassword), now, now);
+  }
+  return { username: normalizedUsername };
+}
+
+// Environment bootstrap is deliberately one-way: once an account exists,
+// changing environment variables cannot reset it.  This makes deployment
+// configuration safe to leave in place after first start.
+export function ensureBootstrapAdmin(db, { username, password } = {}) {
+  if (isAdminConfigured(db)) return false;
+  if (!username && !password) return false;
+  if (!username || !password) throw new Error("管理员初始化必须同时提供账号和密码");
+  createAdminAccount(db, { username, password });
+  return true;
+}
+
+export function createAdminSession(db, { username, password, hours = 12 } = {}) {
+  const normalizedUsername = normalizeAdminUsername(username);
+  const normalizedPassword = normalizeAdminPassword(password);
+  const account = db.prepare("SELECT password_hash FROM admin_accounts WHERE username = ?").get(normalizedUsername);
+  if (!account || !passwordMatches(normalizedPassword, account.password_hash)) throw new Error("管理员账号或密码不正确");
+  const now = new Date().toISOString();
+  const token = `mas_${randomBytes(32).toString("base64url")}`;
+  const expiresAt = futureIso(hours);
+  db.prepare("DELETE FROM admin_sessions WHERE expires_at <= ?").run(now);
+  db.prepare("INSERT INTO admin_sessions (token_hash, username, created_at, expires_at) VALUES (?, ?, ?, ?)")
+    .run(tokenHash(token), normalizedUsername, now, expiresAt);
+  db.prepare("UPDATE admin_accounts SET last_used_at = ? WHERE username = ?").run(now, normalizedUsername);
+  return { token, username: normalizedUsername, expiresAt };
+}
+
+export function getAdminSession(db, token) {
+  if (typeof token !== "string" || !adminSessionPattern.test(token)) return null;
+  const now = new Date().toISOString();
+  db.prepare("DELETE FROM admin_sessions WHERE expires_at <= ?").run(now);
+  return db.prepare("SELECT username, expires_at AS expiresAt FROM admin_sessions WHERE token_hash = ? AND expires_at > ?")
+    .get(tokenHash(token), now) ?? null;
+}
+
+export function revokeAdminSession(db, token) {
+  if (typeof token !== "string" || !adminSessionPattern.test(token)) return;
+  db.prepare("DELETE FROM admin_sessions WHERE token_hash = ?").run(tokenHash(token));
+}
+
+function manualOpportunityId(cityId, candidateId) {
+  return `admin-verified-${createHash("sha256").update(`${cityId}:${candidateId}`).digest("hex").slice(0, 20)}`;
+}
+
+function reviewPayload(candidate, details, now) {
+  const track = textField(details.track, "岗位类别", { max: 24 });
+  if (!["考公", "选调优培", "央国企", "事业单位"].includes(track)) throw new Error("岗位类别不正确");
+  if (details.activeConfirmed !== true) throw new Error("请确认该岗位仍在有效期内或属于仍有效的预公告");
+  const opportunity = {
+    exactTitle: textField(details.exactTitle ?? candidate.exactTitle ?? candidate.title, "具体岗位名称"),
+    title: textField(details.exactTitle ?? candidate.exactTitle ?? candidate.title, "具体岗位名称"),
+    organization: textField(details.organization ?? candidate.organization, "招录单位"),
+    location: textField(details.location ?? candidate.location, "工作地点"),
+    deadline: textField(details.deadline ?? candidate.deadline, "报名或公告有效期"),
+    education: textField(details.education ?? candidate.education, "学历要求"),
+    majors: textField(details.majors ?? candidate.majors, "专业要求"),
+    responsibilities: lines(details.responsibilities, "岗位职责"),
+    requirements: lines(details.requirements, "其他报考条件"),
+    officialAnnouncementUrl: urlField(details.officialAnnouncementUrl, "官方公告链接"),
+    officialApplyUrl: urlField(details.officialApplyUrl, "官方报名或投递链接", { required: false }),
+    status: textField(details.status ?? "招聘中", "岗位状态", { max: 40 }),
+    matchReason: textField(details.matchReason, "收录理由", { max: 1_000 }),
+    jobCode: textField(details.jobCode, "岗位代码", { required: false, max: 200 }),
+    priority: Math.max(0, Math.min(100, Number.parseInt(details.priority, 10) || Number(candidate.priority) || 60)),
+    track,
+    matchLevel: "已核验",
+    sourceId: "admin-review",
+    verifiedAt: now,
+    tags: [...new Set([...(Array.isArray(candidate.tags) ? candidate.tags : []), "管理员核验", track])].slice(0, 10),
+    verification: {
+      officialSource: true,
+      exactTitle: true,
+      organization: true,
+      location: true,
+      deadline: true,
+      education: true,
+      majors: true,
+      responsibilities: true,
+      requirements: true,
+      activeConfirmed: true,
+    },
+  };
+  if (!opportunity.officialApplyUrl) opportunity.officialApplyUrl = opportunity.officialAnnouncementUrl;
+  return opportunity;
+}
+
+export function reviewCandidate(db, { cityId, candidateId, reviewerUsername, decision, details = {} } = {}) {
+  if (!["approved", "rejected"].includes(decision)) throw new Error("审核结论不正确");
+  const candidate = db.prepare("SELECT payload_json FROM opportunities WHERE city_id = ? AND opportunity_id = ? AND record_type = 'candidate'")
+    .get(cityId, candidateId);
+  if (!candidate) throw new Error("该待确认线索不存在，或已经完成审核");
+  const item = parsePayload(candidate);
+  const now = new Date().toISOString();
+  const note = textField(details.note, "审核说明", { required: decision === "rejected", max: 2_000 });
+  let published = null;
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    if (decision === "approved") {
+      const publicItem = reviewPayload(item, details, now);
+      publicItem.id = manualOpportunityId(cityId, candidateId);
+      assertAnonymousPayload(publicItem, "管理员核验岗位");
+      if (!isPubliclyDisplayableOpportunity(publicItem)) {
+        throw new Error("央国企或事业单位岗位缺少生物医学相关专业与岗位内容的双重依据，不能发布");
+      }
+      const row = opportunityRow(cityId, publicItem, "job");
+      db.prepare(`
+        INSERT INTO opportunities (
+          city_id, opportunity_id, record_type, track, organization, title, exact_title, location, deadline,
+          status, priority, match_level, source_id, official_announcement_url, official_apply_url,
+          verified_at, payload_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(city_id, opportunity_id) DO UPDATE SET
+          track = excluded.track, organization = excluded.organization, title = excluded.title,
+          exact_title = excluded.exact_title, location = excluded.location, deadline = excluded.deadline,
+          status = excluded.status, priority = excluded.priority, match_level = excluded.match_level,
+          official_announcement_url = excluded.official_announcement_url,
+          official_apply_url = excluded.official_apply_url, verified_at = excluded.verified_at,
+          payload_json = excluded.payload_json
+      `).run(
+        row.cityId, row.opportunityId, row.recordType, row.track, row.organization, row.title, row.exactTitle,
+        row.location, row.deadline, row.status, row.priority, row.matchLevel, row.sourceId,
+        row.announcementUrl, row.applyUrl, row.verifiedAt, row.payload,
+      );
+      db.prepare("UPDATE favorites SET opportunity_id = ? WHERE city_id = ? AND opportunity_id = ?")
+        .run(publicItem.id, cityId, candidateId);
+      published = publicItem;
+    }
+    db.prepare(`
+      INSERT INTO candidate_reviews (
+        city_id, candidate_id, decision, reviewer_username, reviewed_at, note, approved_opportunity_id, payload_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(city_id, candidate_id) DO UPDATE SET
+        decision = excluded.decision, reviewer_username = excluded.reviewer_username, reviewed_at = excluded.reviewed_at,
+        note = excluded.note, approved_opportunity_id = excluded.approved_opportunity_id, payload_json = excluded.payload_json
+    `).run(
+      cityId, candidateId, decision, reviewerUsername, now, note, published?.id ?? null,
+      json({ decision, reviewedAt: now, note, approvedOpportunityId: published?.id ?? null }),
+    );
+    db.prepare("DELETE FROM opportunities WHERE city_id = ? AND opportunity_id = ? AND record_type = 'candidate'")
+      .run(cityId, candidateId);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  return { decision, reviewedAt: now, opportunity: published };
 }

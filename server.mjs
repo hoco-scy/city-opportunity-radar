@@ -3,8 +3,12 @@ import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import {
   addFavorite,
+  createAdminSession,
   defaultDatabasePath,
+  ensureBootstrapAdmin,
   getCityAudit,
+  getAdminSession,
+  isAdminConfigured,
   isValidUserCode,
   listCities,
   listFavoriteIds,
@@ -12,7 +16,10 @@ import {
   listSources,
   openRadarDatabase,
   removeFavorite,
+  reviewCandidate,
+  revokeAdminSession,
 } from "./db.mjs";
+import { runAllCitiesSync } from "./scripts/run-all-cities-sync.mjs";
 
 const root = resolve(new URL(".", import.meta.url).pathname);
 const staticFiles = new Map([
@@ -72,12 +79,92 @@ function userCode(req) {
   return typeof code === "string" && isValidUserCode(code) ? code : null;
 }
 
+function adminToken(req) {
+  const token = req.headers["x-radar-admin-session"];
+  return typeof token === "string" ? token : null;
+}
+
 function cityExists(db, cityId) {
   return listCities(db).some((city) => city.id === cityId);
 }
 
-async function handleApi(req, res, url, db) {
+function createSyncController({ db, databasePath, legacyRoot, syncRunner }) {
+  let active = null;
+  let status = { state: "idle", startedAt: null, completedAt: null, summary: null, error: null };
+  return {
+    current() { return status; },
+    start() {
+      if (active) return { ...status, alreadyRunning: true };
+      status = { state: "running", startedAt: new Date().toISOString(), completedAt: null, summary: null, error: null };
+      active = Promise.resolve()
+        .then(() => syncRunner({ legacyRoot, databasePath }))
+        .then((summary) => {
+          db.exec("PRAGMA optimize");
+          status = { state: summary.failedCityCount ? "completed-partial" : "completed", startedAt: status.startedAt, completedAt: new Date().toISOString(), summary, error: null };
+        })
+        .catch((error) => {
+          status = { state: "failed", startedAt: status.startedAt, completedAt: new Date().toISOString(), summary: null, error: error instanceof Error ? error.message : "统一更新失败" };
+        })
+        .finally(() => { active = null; });
+      return { ...status, alreadyRunning: false };
+    },
+  };
+}
+
+function requireAdmin(req, res, db) {
+  const session = getAdminSession(db, adminToken(req));
+  if (!session) {
+    sendError(res, 401, "需要有效的管理员会话");
+    return null;
+  }
+  return session;
+}
+
+async function handleAdminApi(req, res, url, db, syncController) {
+  const { pathname } = url;
+  if (req.method === "GET" && pathname === "/api/admin/status") {
+    return sendJson(res, 200, { configured: isAdminConfigured(db) });
+  }
+  if (pathname === "/api/admin/session") {
+    if (req.method === "POST") {
+      const body = await readBody(req);
+      const session = createAdminSession(db, { username: body.username, password: body.password });
+      return sendJson(res, 201, session);
+    }
+    const session = requireAdmin(req, res, db);
+    if (!session) return;
+    if (req.method === "GET") return sendJson(res, 200, session);
+    if (req.method === "DELETE") {
+      revokeAdminSession(db, adminToken(req));
+      return sendJson(res, 200, { ok: true });
+    }
+    return sendError(res, 405, "不支持的请求方法");
+  }
+  const session = requireAdmin(req, res, db);
+  if (!session) return;
+  if (pathname === "/api/admin/sync") {
+    if (req.method === "GET") return sendJson(res, 200, syncController.current());
+    if (req.method === "POST") return sendJson(res, 202, syncController.start());
+    return sendError(res, 405, "不支持的请求方法");
+  }
+  if (pathname === "/api/admin/candidate-reviews" && req.method === "POST") {
+    const body = await readBody(req);
+    if (!cityExists(db, body.cityId) || typeof body.candidateId !== "string") return sendError(res, 400, "待确认线索不存在");
+    const result = reviewCandidate(db, {
+      cityId: body.cityId,
+      candidateId: body.candidateId,
+      reviewerUsername: session.username,
+      decision: body.decision,
+      details: body.details,
+    });
+    return sendJson(res, 200, result);
+  }
+  return sendError(res, 404, "未找到管理员接口");
+}
+
+async function handleApi(req, res, url, db, syncController) {
   const { pathname, searchParams } = url;
+  if (pathname.startsWith("/api/admin/")) return handleAdminApi(req, res, url, db, syncController);
   if (req.method === "GET" && pathname === "/api/health") {
     return sendJson(res, 200, { ok: true, database: "sqlite", cities: listCities(db).length });
   }
@@ -143,12 +230,19 @@ async function handleStatic(res, pathname) {
   }
 }
 
-export function createRadarServer({ databasePath = defaultDatabasePath(root) } = {}) {
+export function createRadarServer({
+  databasePath = defaultDatabasePath(root),
+  legacyRoot = process.env.RADAR_LEGACY_ROOT ?? resolve(root, ".."),
+  bootstrapAdmin = { username: process.env.RADAR_ADMIN_USERNAME, password: process.env.RADAR_ADMIN_PASSWORD },
+  syncRunner = runAllCitiesSync,
+} = {}) {
   const db = openRadarDatabase(databasePath);
+  ensureBootstrapAdmin(db, bootstrapAdmin);
+  const syncController = createSyncController({ db, databasePath, legacyRoot, syncRunner });
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     try {
-      if (url.pathname.startsWith("/api/")) await handleApi(req, res, url, db);
+      if (url.pathname.startsWith("/api/")) await handleApi(req, res, url, db, syncController);
       else if (req.method === "GET" || req.method === "HEAD") await handleStatic(res, url.pathname);
       else sendError(res, 405, "不支持的请求方法");
     } catch (error) {

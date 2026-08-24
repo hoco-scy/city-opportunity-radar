@@ -7,13 +7,13 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>岗位｜梦琳求职雷达</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="app.js?v=20260824.1" defer></script>
+    <script src="app.js?v=20260824.2" defer></script>
   </head>
   <body data-page="jobs">
     <header class="topbar">
-      <a class="brand" href="index.html?v=20260824.1" aria-label="梦琳求职雷达岗位页"><span>◎</span><strong>梦琳求职雷达</strong></a>
-      <nav aria-label="主导航"><a class="active" href="index.html?v=20260824.1">岗位</a><a href="announcements.html?v=20260824.1">考试公告</a><a href="sources.html?v=20260824.1">信息源</a><a href="updates.html?v=20260824.1">更新记录</a></nav>
-      <a class="saved-trigger" href="index.html?v=20260824.1&favorites=1">我的收藏 <b id="favorite-count">0</b></a>
+      <a class="brand" href="index.html?v=20260824.2" aria-label="梦琳求职雷达岗位页"><span>◎</span><strong>梦琳求职雷达</strong></a>
+      <nav aria-label="主导航"><a class="active" href="index.html?v=20260824.2">岗位</a><a href="announcements.html?v=20260824.2">考试公告</a><a href="sources.html?v=20260824.2">信息源</a><a href="updates.html?v=20260824.2">更新记录</a></nav>
+      <div class="topbar-actions"><button class="admin-trigger" data-admin-trigger type="button">管理员</button><a class="saved-trigger" href="index.html?v=20260824.2&favorites=1">我的收藏 <b id="favorite-count">0</b></a></div>
     </header>
 
     <main id="top" class="shell">
@@ -68,6 +68,12 @@
             <h2>面向生物医学相关背景的硕士</h2>
             <p>优先纳入生物医学工程及相近工科可报的应届岗位；纯计算机岗位不会因为热门而列为高匹配。最终报考、投递仍以岗位原文为准。</p>
           </section>
+          <section class="admin-card">
+            <p class="eyebrow">管理员核验</p>
+            <h2>把平台线索变成可行动岗位</h2>
+            <p>登录后可逐条查看官方原文、补全岗位条件，并把确认无误的线索发布到“已核验岗位”。</p>
+            <button class="outline-button" data-admin-trigger type="button">登录管理员</button>
+          </section>
         </aside>
       </section>
     </main>
@@ -81,6 +87,62 @@
       <input id="favorite-code" autocomplete="off" spellcheck="false" />
       <div class="dialog-actions"><button class="primary-button" id="copy-code" type="button">复制代码</button><button class="outline-button" id="save-code" type="button">使用这串代码</button></div>
       <p class="dialog-note" id="code-feedback" aria-live="polite"></p>
+    </dialog>
+    <dialog id="admin-dialog" class="favorite-dialog admin-dialog" aria-labelledby="admin-dialog-title">
+      <form method="dialog" class="dialog-close"><button aria-label="关闭" type="submit">×</button></form>
+      <p class="eyebrow">管理员</p>
+      <h2 id="admin-dialog-title">核验工作台</h2>
+      <p id="admin-login-copy">登录后可审核待确认线索，并从这一处发起四座城市的完整更新。</p>
+      <div id="admin-login-fields">
+        <label for="admin-username">账号</label>
+        <input id="admin-username" autocomplete="username" spellcheck="false" />
+        <label for="admin-password">密码</label>
+        <input id="admin-password" type="password" autocomplete="current-password" />
+      </div>
+      <div class="dialog-actions"><button class="primary-button" id="admin-login" type="button">登录</button><button class="outline-button" id="admin-logout" type="button" hidden>退出登录</button><button class="outline-button" id="run-full-sync" type="button" hidden>立即全量更新</button></div>
+      <p class="dialog-note" id="admin-feedback" aria-live="polite"></p>
+    </dialog>
+    <dialog id="review-dialog" class="favorite-dialog review-dialog" aria-labelledby="review-dialog-title">
+      <form method="dialog" class="dialog-close"><button aria-label="关闭" type="submit">×</button></form>
+      <p class="eyebrow">管理员核验</p>
+      <h2 id="review-dialog-title">核验并发布岗位</h2>
+      <p>只在已经打开官方原文、逐项核对且确认仍有效后发布。提交后线索会从待确认列表移到已核验岗位；后续同步不会覆盖这个结论。</p>
+      <form id="review-form">
+        <input id="review-candidate-id" type="hidden" />
+        <label for="review-track">岗位类别</label>
+        <select id="review-track"><option value="央国企">央国企</option><option value="事业单位">事业单位</option><option value="考公">公务员考试</option><option value="选调优培">选调／优培</option></select>
+        <label for="review-announcement-url">官方公告链接</label>
+        <input id="review-announcement-url" type="url" required placeholder="https://…" />
+        <label for="review-apply-url">官方报名或投递链接（预公告可与公告链接相同）</label>
+        <input id="review-apply-url" type="url" placeholder="https://…" />
+        <label for="review-exact-title">具体岗位名称</label>
+        <input id="review-exact-title" required />
+        <label for="review-organization">招录单位</label>
+        <input id="review-organization" required />
+        <label for="review-location">工作地点</label>
+        <input id="review-location" required />
+        <label for="review-deadline">报名截止日期或公告有效期</label>
+        <input id="review-deadline" required />
+        <label for="review-education">学历要求</label>
+        <input id="review-education" required />
+        <label for="review-majors">专业要求</label>
+        <textarea id="review-majors" required></textarea>
+        <label for="review-responsibilities">岗位职责（每行一项）</label>
+        <textarea id="review-responsibilities" required></textarea>
+        <label for="review-requirements">其他报考条件（每行一项）</label>
+        <textarea id="review-requirements" required></textarea>
+        <label for="review-status">岗位状态</label>
+        <select id="review-status"><option value="招聘中">招聘中</option><option value="预公告">预公告</option></select>
+        <label for="review-priority">关注度（0–100）</label>
+        <input id="review-priority" type="number" min="0" max="100" required />
+        <label for="review-match-reason">收录理由</label>
+        <textarea id="review-match-reason" required placeholder="说明专业与岗位内容如何匹配。"></textarea>
+        <label for="review-note">审核记录（仅管理员数据库保存）</label>
+        <textarea id="review-note" placeholder="可选：记录核验时看到的关键依据。"></textarea>
+        <label class="confirmation"><input id="review-active-confirmed" type="checkbox" required />我已核对官方原文，且确认岗位仍在有效期内或属于仍有效的预公告。</label>
+        <div class="dialog-actions"><button class="primary-button" id="review-approve" type="submit">确认并发布</button><button class="outline-button danger-button" id="review-reject" type="button">不收录此线索</button></div>
+        <p class="dialog-note" id="review-feedback" aria-live="polite"></p>
+      </form>
     </dialog>
     <footer>梦琳求职雷达 · 报名或投递前请以单位官网为准。</footer>
   </body>
