@@ -130,13 +130,11 @@ const schema = `
 const forbiddenField = /^(candidateName|fullName|phone|email|birthDate|homeAddress|schoolName|studentId|idCard|portrait|avatar)$/i;
 const phonePattern = /(?<!\d)1[3-9]\d{9}(?!\d)/;
 const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-// Public job cards are intentionally stricter than discovery.  A company
-// name, an open-major statement, or generic engineering experience is not a
-// substitute for evidence that both the profession and the work itself fit
-// the public biomedical-engineering scope.
-const biomedicalQualificationPattern = /(生物医学工程|生物医工|医学工程|医疗器械工程|临床工程|医疗电子|医学影像(?:工程|技术)?|生物工程)/;
-const broadEngineeringPattern = /(?:工学(?:门类)?|工程类|理工(?:科)?类|仪器(?:科学)?与技术)/;
-const biomedicalRolePattern = /(医疗器械|医学影像|生物信号|临床工程|医疗电子|体外诊断|智慧医疗|医疗健康|临床数据|医学数据|数字医疗|生物医药|生命科学|健康科技)/;
+// Publication eligibility is based on verified official qualification fields.
+// Job duties affect ranking in source-specific collectors; they never veto an
+// otherwise eligible major merely because the title lacks a medical keyword.
+const professionalQualificationPattern = /(专业不限|不限专业|不限制专业|专业不作限制|可不限专业|不设专业限制|生物医学工程|生物医工|医学工程|医疗器械工程|临床工程|医疗电子|医学影像工程|生物工程|生物技术|生物医药|生命科学|生物科学|生物类|医疗器械(?:类|工程|相关专业)?|工学(?:门类|全类|类|专业)|所有工学|理工(?:科|类|专业|背景|方向|等|及|、|，|\/|$)|工程(?:类|门类|学科))/;
+const professionalExclusionPattern = /(生物医学工程|生物医工|医学工程)(?:专业)?(?:除外|不(?:予|可|得)?报考|不接受|不招收)/;
 
 function itemText(item, fields) {
   return fields.flatMap((field) => Array.isArray(item[field]) ? item[field] : [item[field]])
@@ -146,12 +144,12 @@ function itemText(item, fields) {
 export function isPubliclyDisplayableOpportunity(item) {
   if (!["央国企", "事业单位"].includes(item.track)) return true;
   const qualification = itemText(item, ["majors", "requirements", "education"]);
-  const role = itemText(item, ["title", "exactTitle", "responsibilities", "tags", "organization"]);
-  // Exact related-major evidence is sufficient only when the actual role has
-  // an adjacent biomedical/health scenario.  A broad engineering allowance
-  // is sufficient only together with the same scenario evidence.
-  const hasRoleBridge = biomedicalRolePattern.test(role);
-  return hasRoleBridge && (biomedicalQualificationPattern.test(qualification) || broadEngineeringPattern.test(qualification));
+  const verification = item.verification || {};
+  if (professionalExclusionPattern.test(qualification) || verification.eligibility === false) return false;
+  const official = verification.officialSource === true && (verification.specificPosition === true || verification.exactTitle === true);
+  const applicationPath = verification.applicationPath === true || Boolean(item.officialApplyUrl || item.officialAnnouncementUrl);
+  const eligible = verification.eligibility === true || professionalQualificationPattern.test(qualification);
+  return official && applicationPath && eligible;
 }
 
 export function defaultDatabasePath(root = process.cwd()) {
@@ -325,6 +323,10 @@ function parsePayload(row) {
 }
 
 const collectionMethodLabels = {
+  "script-public-exam": "公务员考试公告、职位表与附件脚本",
+  "script-official-notice-adapter": "官方公告列表、正文与附件脚本",
+  "script-official-structured-list": "官网结构化筛选、分页与资格脚本",
+  "script-official-public-gateway": "官网公开接口全量分页与资格脚本",
   "browser-spa": "官网原生筛选与岗位详情核验",
   "script-official-university-announcement-api": "北航就业网公开栏目、公告详情与附件核验",
   "server-rendered-list": "官网列表筛选与分页核验",
@@ -647,7 +649,7 @@ export function reviewCandidate(db, { cityId, candidateId, reviewerUsername, dec
       publicItem.id = manualOpportunityId(cityId, candidateId);
       assertAnonymousPayload(publicItem, "管理员核验岗位");
       if (!isPubliclyDisplayableOpportunity(publicItem)) {
-        throw new Error("央国企或事业单位岗位缺少生物医学相关专业与岗位内容的双重依据，不能发布");
+        throw new Error("央国企或事业单位岗位缺少官方具体岗位、投递路径或生物医学工程可报的专业资格依据，不能发布");
       }
       const row = opportunityRow(cityId, publicItem, "job");
       db.prepare(`

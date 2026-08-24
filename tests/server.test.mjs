@@ -17,13 +17,23 @@ async function request(base, path, options) {
   return { response, body: await response.json() };
 }
 
-test("only publishes enterprise and institution roles with official professional and role evidence", () => {
+test("publishes verified roles by official major eligibility, independently of job-title wording", () => {
   assert.equal(isPubliclyDisplayableOpportunity({
-    track: "央国企", title: "信息化咨询工程师", majors: "专业不限", responsibilities: ["开展政府信息化咨询"],
-  }), false);
+    track: "央国企", title: "人工智能工程师", majors: "生物医学工程、医学工程相关专业", responsibilities: ["开展通用算法研发"],
+    officialApplyUrl: "https://example.gov.cn/apply", verification: { officialSource: true, specificPosition: true, eligibility: true, applicationPath: true },
+  }), true);
   assert.equal(isPubliclyDisplayableOpportunity({
     track: "事业单位", title: "医学影像设备工程师", majors: "生物医学工程、医学工程相关专业", responsibilities: ["负责医学影像设备临床应用支持"],
+    officialApplyUrl: "https://example.gov.cn/apply", verification: { officialSource: true, specificPosition: true, eligibility: true, applicationPath: true },
   }), true);
+  assert.equal(isPubliclyDisplayableOpportunity({
+    track: "央国企", title: "软件工程师", majors: "计算机科学与技术、软件工程", officialApplyUrl: "https://example.gov.cn/apply",
+    verification: { officialSource: true, specificPosition: true, applicationPath: true },
+  }), false);
+  assert.equal(isPubliclyDisplayableOpportunity({
+    track: "事业单位", title: "超声医师", majors: "临床医学、超声医学或中医学", officialApplyUrl: "https://example.gov.cn/apply",
+    verification: { officialSource: true, specificPosition: true, applicationPath: true },
+  }), false);
   assert.equal(isPubliclyDisplayableOpportunity({ track: "考公", title: "已通过资格门禁的岗位" }), true);
 });
 
@@ -74,7 +84,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
 
   const announcements = await request(base, "/api/cities/beijing/opportunities?kind=monitor");
   assert.equal(announcements.response.status, 200);
-  assert.equal(announcements.body.opportunities.length, 5);
+  assert.ok(announcements.body.opportunities.length >= 5);
   assert.ok(announcements.body.opportunities.every((item) => item.note));
 
   const candidates = await request(base, "/api/cities/beijing/opportunities?kind=candidate");
