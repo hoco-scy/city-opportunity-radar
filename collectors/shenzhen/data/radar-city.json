@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "city": "深圳",
+  "municipality": "深圳市",
+  "slug": "shenzhen",
+  "abbreviation": "SZ",
+  "civilExam": "粤考",
+  "hubUrl": "https://hoco-scy.github.io/city-opportunity-radar/",
+  "screeningScope": "生物医学工程及相近工科背景的硕士",
+  "localSourceIds": [
+    "shenzhen-civil",
+    "shenzhen-personnel-exam",
+    "shenzhen-institutions",
+    "shenzhen-state-assets"
+  ]
+}

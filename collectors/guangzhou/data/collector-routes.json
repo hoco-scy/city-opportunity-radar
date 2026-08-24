@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "rule": "每个计划来源必须显式绑定采集器；完整更新禁止隐式回退到浏览器或仅探测入口。",
+  "routes": {
+    "national-civil": {
+      "collector": "public-exam",
+      "recipeSource": "data/filter-recipes.json",
+      "eligibilityGate": "source-specific",
+      "description": "官方公告与职位表专用采集器"
+    },
+    "guangzhou-civil": {
+      "collector": "public-exam",
+      "recipeSource": "data/filter-recipes.json",
+      "eligibilityGate": "source-specific",
+      "description": "本地公务员公告与职位表专用采集器"
+    },
+    "guangzhou-personnel-exam": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "本地人事考试公告页适配器"
+    },
+    "guangzhou-selection-program": {
+      "collector": "public-exam",
+      "recipeSource": "data/filter-recipes.json",
+      "eligibilityGate": "source-specific",
+      "description": "北航选调信息流与官方原文回溯采集器"
+    },
+    "guangzhou-institutions": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "本地事业单位公告页适配器"
+    },
+    "central-institutions": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "中央和国家机关事业单位公告页适配器"
+    },
+    "china-public-recruitment": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "中国公共招聘网公告页适配器"
+    },
+    "central-sasac-recruitment": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "国务院国资委招聘公告页适配器"
+    },
+    "central-enterprise-roster": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "央企名录变更监测适配器"
+    },
+    "guangzhou-state-assets": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "本地国资招聘公告页适配器"
+    },
+    "picc-campus": {
+      "collector": "picc-campus",
+      "recipeSource": "scripts/collect-picc-campus.mjs",
+      "eligibilityGate": "official-major-and-education-only",
+      "description": "中国人保官方结构化接口采集器"
+    },
+    "boe-campus": {
+      "collector": "boe-campus",
+      "recipeSource": "scripts/collect-boe-campus.mjs",
+      "eligibilityGate": "official-major-and-education-only",
+      "description": "京东方官方结构化校园招聘采集器"
+    },
+    "sinopharm-careers": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "国药集团官方招聘公告页适配器"
+    },
+    "genertec-official": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "通用技术集团官方招聘公告页适配器"
+    },
+    "crc-careers": {
+      "collector": "crc-careers",
+      "recipeSource": "scripts/collect-crc-careers.mjs",
+      "eligibilityGate": "official-major-and-education-only",
+      "description": "华润集团官方公开职位网关采集器"
+    },
+    "casic-careers": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "航天科工官方招聘公告页适配器"
+    },
+    "spacechina-careers": {
+      "collector": "official-notice-feed",
+      "recipeSource": "data/source-registry.json",
+      "eligibilityGate": "source-specific",
+      "description": "航天科技官方招聘公告页适配器"
+    },
+    "buaa-career-discovery": {
+      "collector": "buaa-discovery",
+      "recipeSource": "scripts/collect-buaa-discovery.mjs",
+      "eligibilityGate": "official-major-and-education-only",
+      "description": "北航就业信息网公开列表与详情采集器"
+    },
+    "national-college-employment": {
+      "collector": "ncss-discovery",
+      "recipeSource": "scripts/collect-ncss-discovery.mjs",
+      "eligibilityGate": "official-major-and-education-only",
+      "description": "国家大学生就业服务平台公开筛选采集器"
+    },
+    "iguopin-discovery": {
+      "collector": "iguopin-discovery",
+      "recipeSource": "scripts/collect-iguopin-discovery.mjs",
+      "eligibilityGate": "official-major-and-education-only",
+      "description": "国聘公开筛选采集器"
+    }
+  }
+}

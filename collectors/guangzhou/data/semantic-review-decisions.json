@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "city": "广州",
+  "sourceId": "chinatelecom-careers",
+  "candidateSetHash": "aa0cc962e77cf0af4086a5b880de44b8a0d0102331faa8ef39eb3e18e15d8b1a",
+  "reviewMethod": "本轮 50 个官网详情由任务代理作为一个语义批次阅读职责、专业条件与单位业务后形成；不是关键词分类结果。",
+  "batchDecisions": [
+    {
+      "batch": 1,
+      "candidateCount": 50,
+      "decision": "rejected",
+      "reasonCode": "role-domain-not-aligned",
+      "reason": "岗位核心为通信、施工监理、云网、纯软件研发、物流、财务或营销等方向，官网职责和专业条件未提供与生物医学工程相关的工作场景或资格依据，因此不收录。",
+      "semanticBasis": "逐项综合职责、明确专业要求、服务行业和客观工作要求判断；不会因为岗位标题含 AI、数据、信号或工程而自动纳入或排除。"
+    }
+  ],
+  "overrides": []
+}

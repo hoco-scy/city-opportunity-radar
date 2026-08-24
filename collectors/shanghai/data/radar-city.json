@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "city": "上海",
+  "municipality": "上海市",
+  "slug": "shanghai",
+  "abbreviation": "SH",
+  "civilExam": "沪考",
+  "hubUrl": "https://hoco-scy.github.io/city-opportunity-radar/",
+  "screeningScope": "生物医学工程及相近工科背景的硕士",
+  "localSourceIds": [
+    "shanghai-civil",
+    "shanghai-personnel-exam",
+    "shanghai-institutions",
+    "shanghai-state-assets"
+  ]
+}

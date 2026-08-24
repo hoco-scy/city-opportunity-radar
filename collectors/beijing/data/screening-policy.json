@@ -1,0 +1,111 @@
+{
+  "version": 3,
+  "mode": "official-native-filter-first",
+  "principles": {
+    "preferOfficialNativeFilters": true,
+    "neverTraverseUnfilteredPortalWhenReliableFiltersExist": true,
+    "combineQueriesByUnion": true,
+    "deduplicateBeforeModelReview": true,
+    "lowRankNeverMeansExclude": true,
+    "unknownMeansDeferNotReject": true,
+    "httpStatusAloneNeverMeansSuccess": true,
+    "accessibleIncompleteIsNotUnavailable": true
+  },
+  "sourceCapabilityPolicy": {
+    "registry": "data/filter-recipes.json",
+    "discoverOnFirstUse": true,
+    "recheckCapabilitiesEveryDays": 30,
+    "safeFiltersFirst": ["招聘类型或届别", "工作地点", "学历", "岗位大类", "发布时间"],
+    "keywordFiltersOnlyWhenSafeFiltersStillExceed": 150,
+    "stopNarrowingWhenAtOrBelow": 100,
+    "fallbackWhenNoReliableNativeFilter": "下载官方表格、调用官方公开接口或用代码处理官方分页结果",
+    "semanticHealthChecks": ["最终地址没有落到 404 或 error 路由", "页面标题和正文不是不存在、下线或错误页", "动态列表已加载出可计数的结果或明确的空状态"],
+    "accessibleButIncompleteOutcome": "accessible-incomplete"
+  },
+  "profileRelevanceGate": {
+    "discoveryTermsAreNotPublicationEvidence": true,
+    "candidateFocus": "biomedical-engineering-and-adjacent-engineering",
+    "eligibilityEvidenceFields": ["官方专业要求", "官方学历要求", "官方招录对象"],
+    "eligibleMajorScopes": ["生物医学工程及等同专业", "医学、生物、医药等相近专业", "工学、理工及相近工程门类", "专业不限"],
+    "roleTextAffects": "ranking-and-pure-computing-exclusion",
+    "roleTextNeverRejectsEligibleMajor": false,
+    "pureComputingRequiresBiomedicalBridge": true
+  },
+  "geographyCadence": {
+    "beijing": "every-run",
+    "otherRegions": "every-run",
+    "otherRegionsNeverImplicitlyRejected": true
+  },
+  "stages": [
+    {
+      "id": "discover-native-capabilities",
+      "executor": "code-and-manual-diagnostics",
+      "input": "官方招聘列表首页",
+      "output": "站点专属筛选配方",
+      "requirements": ["识别招聘类型、届别、地点、学历、岗位类别、发布时间和关键词控件", "记录筛选前后结果数量", "不得猜测隐藏参数"]
+    },
+    {
+      "id": "native-filter-union",
+      "executor": "source-specific-script",
+      "input": "站点专属筛选配方",
+      "output": "多组官方查询结果的并集",
+      "requirements": ["先应用不会误伤资格的结构化筛选", "北京结果每轮检查", "必要时运行广义关键词族并取并集", "不得只依赖单一专业关键词"]
+    },
+    {
+      "id": "normalize-and-deduplicate",
+      "executor": "code",
+      "input": "官方站内筛选结果",
+      "output": "去重后的候选岗位",
+      "requirements": ["优先使用职位代码去重", "保留命中的筛选组合", "同一岗位多次命中只复核一次"]
+    },
+    {
+      "id": "semantic-batch-review",
+      "executor": "routine-model",
+      "input": "去重后的候选岗位",
+      "output": "结构化批量结论",
+      "requirements": ["每批 20 至 60 个岗位", "输出固定 JSON 字段", "不得为每个岗位单独发起模型调用"]
+    },
+    {
+      "id": "official-verification",
+      "executor": "source-specific-script-and-official-evidence",
+      "input": "拟发布岗位、疑难岗位、已发布且仍在截止前的岗位",
+      "output": "官方逐岗证据和最终结论",
+      "requirements": ["仅由来源专属脚本抓取候选子集的详情或附件；浏览器只用于人工诊断改版", "公考全部资格项通过后才能发布", "央国企相关专业不明确时标记需要确认"]
+    }
+  ],
+  "publicExamException": {
+    "reason": "公考通常以官方完整职位表发布，缺少稳定的站内资格筛选器",
+    "method": "在本地表格或代码中使用官方字段一次性组合筛选，不让模型逐行阅读",
+    "filterOrder": ["招录对象和毕业届别", "学历学位", "政治面貌", "基层经历", "户籍生源", "专业名称和代码", "备注限制"],
+    "modelInput": "只包含通过结构化筛选或存在解析歧义的岗位"
+  },
+  "modelPolicy": {
+    "routineModel": "GPT-5.6 Terra",
+    "routineReasoning": "medium",
+    "batchSizeTarget": 40,
+    "highReasoning": {
+      "defaultEnabled": false,
+      "separateCadence": "weekly-or-manual",
+      "maxItemsPerRun": 20,
+      "allowedReasons": ["专业目录层级冲突", "职位备注与主字段冲突", "多份官方文件口径冲突", "官方附件解析异常"],
+      "overflowOutcome": "deferred"
+    }
+  },
+  "requiredRunMetrics": [
+    "portalResultsReported",
+    "nativeFilterQueries",
+    "nativeFilteredResults",
+    "deduplicatedCandidates",
+    "positionsBatchReviewed",
+    "positionsOfficiallyVerified",
+    "positionsEscalated",
+    "positionsDeferredByBudget"
+  ],
+  "publicReporting": {
+    "recordFilterRecipesUsed": true,
+    "recordFilterReduction": true,
+    "recordReviewedCandidatesIndividually": true,
+    "includeOfficialPortalFallback": true,
+    "neverPublishPrivateProfileValues": true
+  }
+}

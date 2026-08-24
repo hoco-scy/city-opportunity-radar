@@ -23,7 +23,7 @@ import {
   heartbeatUpdateLock,
   openRadarDatabase,
 } from "../db.mjs";
-import { importLegacyCities } from "./import-legacy-cities.mjs";
+import { importCityCollectors } from "./import-city-collectors.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const cityValidationScripts = [
@@ -79,7 +79,7 @@ function sourceFactMessage(check, sourceName) {
 }
 
 export async function runAllCitiesSync({
-  legacyRoot = resolve(projectRoot, ".."),
+  collectorsRoot = resolve(projectRoot, "collectors"),
   databasePath = defaultDatabasePath(projectRoot),
   cityIds = CITY_CATALOG.map((city) => city.id),
   onProgress = () => {},
@@ -91,7 +91,7 @@ export async function runAllCitiesSync({
   onProgress({ phase: "workflow-start", message: `开始执行 ${selectedCities.length} 个城市的完整更新。`, data: { cityCount: selectedCities.length } });
 
   for (const city of selectedCities) {
-    const cityRoot = resolve(legacyRoot, `${city.id}-opportunity-radar-public`);
+    const cityRoot = resolve(collectorsRoot, city.id);
     const outcome = { cityId: city.id, cityName: city.name, status: "failed", gates: [], error: null };
     outcomes.push(outcome);
     onProgress({ phase: "city-start", cityId: city.id, message: `${city.name}开始执行完整采集工作流。` });
@@ -175,7 +175,7 @@ export async function runAllCitiesSync({
   let imported = [];
   if (importedIds.length) {
     onProgress({ phase: "import-start", message: `开始把 ${importedIds.length} 个城市的快照导入统一数据库。`, data: { cityIds: importedIds } });
-    imported = await importLegacyCities({ legacyRoot, databasePath, cityIds: importedIds });
+    imported = await importCityCollectors({ collectorsRoot, databasePath, cityIds: importedIds });
     for (const outcome of outcomes) {
       if (outcome.status === "ready-to-import") outcome.status = "imported";
     }
@@ -204,7 +204,7 @@ export async function runAllCitiesSync({
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const legacyRoot = argument("--from") ?? process.env.RADAR_LEGACY_ROOT ?? resolve(projectRoot, "..");
+  const collectorsRoot = argument("--from") ?? process.env.RADAR_COLLECTORS_ROOT ?? resolve(projectRoot, "collectors");
   const databasePath = argument("--database") ?? process.env.RADAR_DB_PATH ?? defaultDatabasePath(projectRoot);
   const city = argument("--city");
   const db = openRadarDatabase(databasePath);
@@ -218,7 +218,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     heartbeat.unref?.();
     try {
       const summary = await runAllCitiesSync({
-        legacyRoot,
+        collectorsRoot,
         databasePath,
         cityIds: city ? [city] : CITY_CATALOG.map((item) => item.id),
         onProgress: (event) => {

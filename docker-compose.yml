@@ -1,8 +1,8 @@
 services:
   radar:
     build:
-      context: ..
-      dockerfile: city-opportunity-radar-public/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     image: menglin-opportunity-radar:latest
     init: true
     restart: unless-stopped
@@ -10,7 +10,7 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       RADAR_DB_PATH: /data/menglin-opportunity-radar.sqlite
-      RADAR_LEGACY_ROOT: /radars
+      RADAR_COLLECTORS_ROOT: /app/collectors
       RADAR_BACKUP_DIR: /backups
       RADAR_IMPORT_ON_START: ${RADAR_IMPORT_ON_START:-1}
       RADAR_ADMIN_USERNAME: ${RADAR_ADMIN_USERNAME:-menglin-admin}

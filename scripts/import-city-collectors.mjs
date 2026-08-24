@@ -14,8 +14,8 @@ async function readJson(filename) {
   return JSON.parse(await readFile(filename, "utf8"));
 }
 
-export async function importLegacyCities({
-  legacyRoot = resolve(projectRoot, ".."),
+export async function importCityCollectors({
+  collectorsRoot = resolve(projectRoot, "collectors"),
   databasePath = defaultDatabasePath(projectRoot),
   cityIds = CITY_CATALOG.map((city) => city.id),
 } = {}) {
@@ -23,7 +23,7 @@ export async function importLegacyCities({
   try {
     const summary = [];
     for (const cityId of cityIds) {
-      const sourceRoot = resolve(legacyRoot, `${cityId}-opportunity-radar-public`, "data");
+      const sourceRoot = resolve(collectorsRoot, cityId, "data");
       const [opportunities, registry, reviewLog] = await Promise.all([
         readJson(resolve(sourceRoot, "opportunities.json")),
         readJson(resolve(sourceRoot, "source-registry.json")),
@@ -50,11 +50,11 @@ export async function importLegacyCities({
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const legacyRoot = argument("--from") ?? resolve(projectRoot, "..");
+  const collectorsRoot = argument("--from") ?? process.env.RADAR_COLLECTORS_ROOT ?? resolve(projectRoot, "collectors");
   const databasePath = argument("--database") ?? defaultDatabasePath(projectRoot);
   const city = argument("--city");
-  const summary = await importLegacyCities({
-    legacyRoot,
+  const summary = await importCityCollectors({
+    collectorsRoot,
     databasePath,
     cityIds: city ? [city] : CITY_CATALOG.map((item) => item.id),
   });

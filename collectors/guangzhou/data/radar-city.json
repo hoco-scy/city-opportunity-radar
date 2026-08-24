@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "city": "广州",
+  "municipality": "广州市",
+  "slug": "guangzhou",
+  "abbreviation": "GZ",
+  "civilExam": "粤考",
+  "hubUrl": "https://hoco-scy.github.io/city-opportunity-radar/",
+  "screeningScope": "生物医学工程及相近工科背景的硕士",
+  "localSourceIds": [
+    "guangzhou-civil",
+    "guangzhou-personnel-exam",
+    "guangzhou-institutions",
+    "guangzhou-state-assets"
+  ]
+}

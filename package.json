@@ -9,7 +9,9 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
-    "db:import:legacy": "node scripts/import-legacy-cities.mjs",
+    "collectors:install": "npm --prefix collectors/beijing ci --ignore-scripts && npm --prefix collectors/shanghai ci --ignore-scripts && npm --prefix collectors/guangzhou ci --ignore-scripts && npm --prefix collectors/shenzhen ci --ignore-scripts",
+    "collectors:test": "npm --prefix collectors/beijing run test:collectors && npm --prefix collectors/shanghai run test:collectors && npm --prefix collectors/guangzhou run test:collectors && npm --prefix collectors/shenzhen run test:collectors",
+    "db:import:collectors": "node scripts/import-city-collectors.mjs",
     "db:export": "node scripts/database-transfer-cli.mjs export",
     "db:restore": "node scripts/database-transfer-cli.mjs restore",
     "data:export": "node scripts/database-transfer-cli.mjs export-public",
@@ -18,6 +20,6 @@
     "test": "node --test tests/*.test.mjs",
     "validate:site": "node scripts/validate-site.mjs",
     "check:privacy": "node scripts/check-privacy.mjs",
-    "check": "npm run check:privacy && npm run validate:site && npm test"
+    "check": "npm run check:privacy && npm run validate:site && npm test && npm run collectors:test"
   }
 }

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="广州优先的考公、选调、事业单位和央国企岗位清单。" />
+    <title>岗位｜广州求职雷达</title>
+    <link rel="stylesheet" href="styles.css?v=20260822-1820" />
+    <script src="app.js?v=20260822-1800" defer></script>
+  </head>
+  <body data-view="jobs">
+    <div class="site-shell">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="返回岗位首页"><span class="brand-mark">GZ</span><span><strong>广州求职雷达</strong><small>广州岗位更新</small></span></a>
+        <nav aria-label="主导航"><a class="nav-current" href="index.html">岗位</a><a href="monitors.html">考试公告</a><a href="sources.html">信息源</a><a href="audit.html">更新记录</a><a class="city-switch" href="https://hoco-scy.github.io/city-opportunity-radar/">切换城市</a></nav>
+        <span class="sync-status" id="sync-date"><i></i>正在读取更新时间</span>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">2027 届 · 广州优先</p>
+            <h1>广州优先的<br /><em>岗位清单</em></h1>
+            <p class="hero-intro">主要面向生物医学工程及相近工科背景的硕士。考公、选调、事业单位和央国企放在一起看；每条信息都对应一个具体岗位，并附上专业要求和官网入口。</p>
+            <div class="hero-actions"><a class="primary-button" href="#opportunities">浏览 <strong id="hero-job-count">—</strong> 个岗位 <span>↓</span></a><a class="text-button" href="sources.html">查看信息源 →</a></div>
+          </div>
+          <div class="hero-panel" aria-label="当前岗位概况">
+            <div class="panel-topline"><span>目前收录</span><strong>已核对岗位信息</strong></div>
+            <div class="phase-visual"><div class="phase-number">GZ</div><div><p>查看范围</p><strong>广州每次更新，全国定期补充</strong></div></div>
+            <div class="phase-progress"><span></span></div>
+            <div class="panel-stats"><div><strong id="stat-jobs">—</strong><span>全部岗位</span></div><div><strong id="stat-guangzhou">—</strong><span>广州岗位</span></div><div><strong id="stat-tracks">—</strong><span>招聘方向</span></div></div>
+            <p class="next-window"><span>先看什么</span><strong>快截止和招满即止的岗位</strong></p>
+          </div>
+        </section>
+
+        <section class="dashboard" id="opportunities">
+          <div class="main-column">
+            <div class="section-heading"><div><p class="eyebrow">岗位列表</p><h2>现在可以看的岗位</h2></div><span class="result-count" id="result-count">正在载入</span></div>
+            <div class="toolbar">
+              <div class="filter-tabs" role="group" aria-label="按招聘方向筛选"><button class="active" data-filter="全部" type="button">全部</button><button data-filter="考公" type="button">国考 / 粤考</button><button data-filter="选调优培" type="button">选调 / 优培</button><button data-filter="央国企" type="button">国有企业</button><button data-filter="事业单位" type="button">事业单位</button></div>
+              <label class="search-box"><span aria-hidden="true">⌕</span><input id="search" aria-label="搜索岗位、代码、单位或专业" placeholder="搜岗位、单位、代码或专业" /></label>
+            </div>
+            <p class="filter-note">这里按常用报名入口归类，不是互不重叠的单位类别；岗位最终属于机关、事业单位还是国有企业，以当年公告为准。</p>
+            <div class="match-toolbar" role="group" aria-label="按推荐程度筛选"><span>推荐程度</span><button class="active" data-match="全部" type="button">全部</button><button data-match="重点关注" type="button">重点关注</button><button data-match="需要确认" type="button">需要确认</button><button data-match="谨慎尝试" type="button">谨慎尝试</button><button class="saved-filter-button" data-saved-filter type="button" aria-pressed="false">♡ 我的收藏 <strong id="saved-filter-count">0</strong></button></div>
+            <div class="opportunity-list" id="opportunity-list"><div class="empty-state"><strong>正在读取岗位</strong><p>稍等一下，岗位列表马上出现。</p></div></div>
+          </div>
+
+          <aside class="side-column">
+            <section class="today-card"><div class="side-heading"><div><p class="eyebrow">今天可以先做</p><h2>三件小事</h2></div><span id="task-count">0/3</span></div><div class="task-list" id="task-list"></div><p class="saved-note">已经收藏 <strong id="saved-count">0</strong> 个岗位。收藏只保存在当前浏览器。</p></section>
+            <section class="profile-card">
+              <div class="profile-header"><span class="profile-monogram">筛</span><div><p>主要筛选范围</p><strong>页面不保存姓名、学校或联系方式</strong></div></div>
+              <div class="profile-grid"><div><span>学历</span><strong>硕士 · 工学优先</strong></div><div><span>专业</span><strong>生物医学工程及相近工科</strong></div><div><span>地点</span><strong>广州优先 · 全国补充</strong></div></div>
+              <div class="skill-stack"><span>生物医学工程</span><span>医疗器械</span><span>仪器 / 电子信息</span><span>数据与技术</span><span>综合管理</span></div>
+            </section>
+            <section class="source-card"><p class="eyebrow">收录原则</p><h2>为什么会出现在这里</h2><ul><li><span>01</span><p><strong>能找到具体岗位</strong>至少有岗位名称或职位代码，不拿整场招聘代替岗位。</p></li><li><span>02</span><p><strong>能回到官网查看</strong>职位信息来自政府或招聘单位官网，第三方内容只用来找方向。</p></li><li><span>03</span><p><strong>公考岗位确认可报</strong>报考条件有一项说不清，就先放到更新记录里继续查。</p></li></ul><a class="source-card-link" href="sources.html">查看正在检查的信息源 →</a></section>
+          </aside>
+        </section>
+
+        <section class="selection-logic" aria-labelledby="selection-logic-title">
+          <div class="selection-copy"><p class="eyebrow">筛选逻辑</p><h2 id="selection-logic-title">主要面向生物医学相关背景的硕士</h2><p>以生物医学工程为起点，也关注招聘公告明确允许的相近工科、交叉学科、工学大类和不限专业岗位。专业相近不等于一定可报，具体条件仍按每个岗位的官方说明确认。</p></div>
+          <div class="selection-rules">
+            <article><span>01</span><h3>先看专业与学历</h3><p>优先生物医学工程及相近工科硕士；同时关注仪器、电子信息、计算机、数据、人工智能、生物工程、医疗器械等方向，以及明确允许工学或不限专业的岗位。</p></article>
+            <article><span>02</span><h3>公考逐项确认条件</h3><p>国考、粤考、选调和优培只有学历、专业、招录对象及职位备注等公开条件明确符合时，才会进入岗位列表；不明确的内容留在公告和更新记录中。</p></article>
+            <article><span>03</span><h3>广州优先，官网为准</h3><p>广州岗位每次更新优先处理，全国岗位作为补充。只收录能回到官方公告或招聘系统核对的具体岗位；报名时请再以官网公布条件为准。</p></article>
+          </div>
+        </section>
+
+        <section class="how-it-works">
+          <div><p class="eyebrow">如何使用</p><h2>从具体岗位开始，报名时回到官网确认</h2><p>岗位页只放能回到招聘单位官网核对的信息。看到感兴趣的岗位，可以先收藏，再打开官网确认截止时间和完整条件。</p></div>
+          <ol><li><span>1</span><strong>找到岗位</strong><p>按招录方向、推荐程度或关键词缩小范围。</p></li><li><span>2</span><strong>查看详情</strong><p>重点看专业、学历、地点、职责和截止时间。</p></li><li><span>3</span><strong>回到官网</strong><p>投递或报名前，再以招聘单位公布的条件为准。</p></li></ol>
+        </section>
+      </main>
+      <footer><p><strong>广州求职雷达</strong> · 给自己用的岗位清单</p><p>报名前请再打开招聘单位官网确认一次。</p></footer>
+    </div>
+  </body>
+</html>

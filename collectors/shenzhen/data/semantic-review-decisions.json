@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "city": "深圳",
+  "sourceId": "chinatelecom-careers",
+  "candidateSetHash": "f5c8f0333e741a14351a9984121f972d581c719369c68cef6917eab01c8e683d",
+  "reviewMethod": "本轮 22 个官网详情由任务代理作为一个语义批次阅读职责、专业条件与单位业务后形成；不是关键词分类结果。",
+  "batchDecisions": [
+    {
+      "batch": 1,
+      "candidateCount": 22,
+      "decision": "rejected",
+      "reasonCode": "role-domain-not-aligned",
+      "reason": "岗位核心为通信网络、施工与设备维护、物流、销售、云网或纯软件研发，官网没有提供医疗健康或生物医学工程交叉职责与专业依据，因此不收录。",
+      "semanticBasis": "根据每项官网详情的实际工作对象、专业/技能要求和业务场景综合判断；没有依靠 AI、网络或工程等标题关键词自动裁决。"
+    }
+  ],
+  "overrides": [
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=12cfb1860102a4c1&recruitType=1&positionType=0%2F1227%2F132803&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "professional-and-role-evidence-missing",
+      "reason": "官网未设置专业限制，职责为政府信息化调研、方案设计和项目管理；可作为交叉工科背景的低优先级备选，但专业资格需确认。",
+      "semanticBasis": "依据是岗位未限定专业且职责为咨询/项目管理，不是将政府信息化自动视为医疗健康场景。",
+      "matchLevel": "需要确认",
+      "priority": 64,
+      "matchReason": "官方未限制专业，岗位偏信息化咨询与项目管理；生物医学工程资格需投递前确认。",
+      "tags": ["信息化咨询", "专业未单列", "专业待确认"]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=6ae3e4c43c1ee698&recruitType=1&positionType=0%2F1227%2F132803&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "professional-and-role-evidence-missing",
+      "reason": "官网职责是行业信息化调研、可研和方案设计，任职条件未限定具体专业；保留为需要确认的交叉工科备选。",
+      "semanticBasis": "判断来自官网列出的咨询设计职责和未限定专业的条件，不因“信息化咨询工程师”名称而直接推定匹配。",
+      "matchLevel": "需要确认",
+      "priority": 65,
+      "matchReason": "官方未限制专业，工作以调研、可研和方案设计为主；生物医学工程资格需确认。",
+      "tags": ["信息化咨询", "可研方案", "专业待确认"]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=a93504dd32e79cb6&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133223&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "professional-and-role-evidence-missing",
+      "reason": "官网仅列通用协作与解决问题条件，职责为客户需求、方案编制和交付协同；未排除理工科背景，故保留为低优先级的需要确认岗位。",
+      "semanticBasis": "根据具体职责与官方未列专业限制综合判断；不将通用解决方案岗位误表述为已确认对口。",
+      "matchLevel": "需要确认",
+      "priority": 62,
+      "matchReason": "官方未列专业限制，职责偏方案与项目协同；是否接受生物医学工程须投递前确认。",
+      "tags": ["解决方案", "专业未单列", "专业待确认"]
+    }
+  ]
+}

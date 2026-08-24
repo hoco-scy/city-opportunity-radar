@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { createRadarServer } from "../server.mjs";
-import { importLegacyCities } from "../scripts/import-legacy-cities.mjs";
+import { importCityCollectors } from "../scripts/import-city-collectors.mjs";
 import {
   acquireUpdateLock,
   finishUpdateRun,
@@ -21,7 +21,7 @@ import {
 import { createScheduleController, nextDailyRun } from "../scheduler.mjs";
 
 const projectRoot = resolve(new URL("../", import.meta.url).pathname);
-const legacyRoot = resolve(projectRoot, "..");
+const collectorsRoot = resolve(projectRoot, "collectors");
 const validCode = "menglin_user_2026";
 
 async function request(base, path, options) {
@@ -134,7 +134,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const databasePath = join(workdir, "radar.sqlite");
   t.after(async () => rm(workdir, { recursive: true, force: true }));
 
-  const summary = await importLegacyCities({ legacyRoot, databasePath });
+  const summary = await importCityCollectors({ collectorsRoot, databasePath });
   assert.equal(summary.length, 4);
   assert.deepEqual(summary.map((item) => item.cityId), ["beijing", "shanghai", "guangzhou", "shenzhen"]);
   assert.ok(summary.every((item) => item.sources >= 27));

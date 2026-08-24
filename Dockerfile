@@ -4,23 +4,18 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=3000 \
     RADAR_DB_PATH=/data/menglin-opportunity-radar.sqlite \
-    RADAR_LEGACY_ROOT=/radars \
+    RADAR_COLLECTORS_ROOT=/app/collectors \
     RADAR_BACKUP_DIR=/backups \
     RADAR_IMPORT_ON_START=1
 
 WORKDIR /app
 
-# The Compose build context is the common parent of the unified repository and
-# the four city repositories. The resulting image therefore contains the full
-# collection runtime instead of serving only a static snapshot.
-COPY --chown=node:node city-opportunity-radar-public/ /app/
-COPY --chown=node:node beijing-opportunity-radar-public/ /radars/beijing-opportunity-radar-public/
-COPY --chown=node:node shanghai-opportunity-radar-public/ /radars/shanghai-opportunity-radar-public/
-COPY --chown=node:node guangzhou-opportunity-radar-public/ /radars/guangzhou-opportunity-radar-public/
-COPY --chown=node:node shenzhen-opportunity-radar-public/ /radars/shenzhen-opportunity-radar-public/
+# The repository is a self-contained monorepo: the service and all four city
+# collectors are copied from one Docker build context.
+COPY --chown=node:node . /app/
 
 RUN for city in beijing shanghai guangzhou shenzhen; do \
-      cd "/radars/${city}-opportunity-radar-public" && npm ci --omit=dev --ignore-scripts; \
+      cd "/app/collectors/${city}" && npm ci --omit=dev --ignore-scripts; \
     done \
     && mkdir -p /data /backups \
     && chown node:node /data /backups \

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="广州求职雷达收录的公务员、选调优培、事业单位和国有企业信息源。" />
+    <title>信息源｜广州求职雷达</title>
+    <link rel="stylesheet" href="styles.css?v=20260823-1700" />
+    <script src="sources.js?v=20260823-1700" defer></script>
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="返回岗位首页"><span class="brand-mark">GZ</span><span><strong>广州求职雷达</strong><small>广州岗位更新</small></span></a>
+        <nav aria-label="主导航"><a href="index.html">岗位</a><a href="monitors.html">考试公告</a><a class="nav-current" href="sources.html">信息源</a><a href="audit.html">更新记录</a><a class="city-switch" href="https://hoco-scy.github.io/city-opportunity-radar/">切换城市</a></nav>
+        <span class="sync-status" id="sync-date"><i></i>正在读取更新时间</span>
+      </header>
+
+      <main class="sources-page subpage">
+        <section class="page-intro sources-hero">
+          <div>
+            <p class="eyebrow">信息源</p>
+            <h1>每条岗位，<br /><em>都能回到出处</em></h1>
+            <p>这里列出网站收录的政府公告、官方招聘系统和线索平台。岗位只有回到官方页面核验后，才会进入岗位列表。</p>
+          </div>
+          <div class="taxonomy-card">
+            <p class="eyebrow">分类说明</p>
+            <strong>不是四只互不相干的抽屉</strong>
+            <div><span>招录方式</span><p>国考、粤考、定向选调、优培、公开招聘、校园招聘</p></div>
+            <div><span>单位性质</span><p>党政机关、事业单位、中央企业、广州市属国企</p></div>
+            <small>分类只表示当前来源实际承担的采集范围。用户快捷入口和后台采集路线分开显示。</small>
+          </div>
+        </section>
+
+        <section class="source-directory" aria-labelledby="source-directory-title">
+          <div class="section-heading">
+            <div><p class="eyebrow" id="source-directory-kicker">给你打开的网站</p><h2 id="source-directory-title">官方快捷入口</h2></div>
+            <span class="result-count" id="source-result-count">正在载入</span>
+          </div>
+          <p class="source-directory-description" id="source-directory-description">这些链接只供直接进入官方页面，不显示采集状态。</p>
+          <div class="source-view-tabs" role="tablist" aria-label="选择信息源展示方式">
+            <button class="active" data-source-view="shortcut" type="button" role="tab" aria-selected="true">官方快捷入口</button>
+            <button data-source-view="collection" type="button" role="tab" aria-selected="false">采集与核验路线</button>
+          </div>
+          <div class="source-toolbar">
+            <div class="filter-tabs source-filters" role="group" aria-label="按覆盖范围筛选信息源">
+              <button class="active" data-source-filter="全部" type="button">全部</button>
+              <button data-source-filter="公务员招录" type="button">国考 / 粤考</button>
+              <button data-source-filter="选调优培" type="button">选调 / 优培</button>
+              <button data-source-filter="事业单位" type="button">事业单位</button>
+              <button data-source-filter="国有企业" type="button">国有企业</button>
+              <button data-source-filter="发现线索" type="button">发现线索</button>
+            </div>
+            <label class="search-box"><span aria-hidden="true">⌕</span><input id="source-search" aria-label="搜索信息源" placeholder="搜索机构或网站" /></label>
+          </div>
+          <p class="source-filter-note">覆盖范围只对应当前职责；选调／优培仅保留实际承担该链路的来源。</p>
+          <div class="source-directory-grid" id="source-grid"><div class="empty-state"><strong>正在读取信息源</strong><p>稍等一下。</p></div></div>
+        </section>
+
+        <section class="source-legend" aria-label="信息源用途说明">
+          <article><span>01</span><strong>官方发布依据</strong><p>政府公告、职位表、企业官网或官方招聘系统。岗位公开前必须回到这里核验。</p></article>
+          <article><span>02</span><strong>官方名录</strong><p>用来确认中央企业和广州市属国企范围，并链接到对应的官方招聘页面。</p></article>
+          <article><span>03</span><strong>发现线索</strong><p>就业平台和招聘平台只帮助发现信息，不单独作为岗位真实有效的证明。</p></article>
+        </section>
+      </main>
+
+      <footer><p><strong>广州求职雷达</strong> · 信息源</p><p>具体岗位变化和待确认原因请到更新记录查看。</p></footer>
+    </div>
+  </body>
+</html>

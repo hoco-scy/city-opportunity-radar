@@ -1,0 +1,696 @@
+{
+  "schemaVersion": 1,
+  "city": "北京",
+  "sourceId": "chinatelecom-careers",
+  "candidateSetHash": "8f198483274dac6caf1cf3fd04f6e60923c2b3e67ed439f545bc86e38026c907",
+  "reviewMethod": "本轮逐项读取官网专业、学历、届别、职责与任职要求；硬条件决定结论，岗位内容仅用于排序和风险提示。",
+  "batchDecisions": [],
+  "overrides": [
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=fdeb8a8cba76475c&recruitType=1&positionType=0%2F1227%2F132810&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=074119a365862e31&recruitType=1&positionType=0%2F1227%2F132810&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=0f248c3fd99efd3b&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133223&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=516153e12a6aac5a&recruitType=1&positionType=N%2F%E9%94%80%E5%94%AE%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AE%A1%E7%90%86&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=08dbdfec4ccec195&recruitType=1&positionType=N%2F%E9%94%80%E5%94%AE%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AE%A1%E7%90%86&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=503bebfa52d732ce&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133223&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=4a78d1cc32a349b8&recruitType=1&positionType=N%2F%E9%94%80%E5%94%AE%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AE%A1%E7%90%86&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=6fab9602a65128e8&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133223&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=474276441a99eede&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133223&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=6e6b49880a693113&recruitType=1&positionType=N%2F%E9%94%80%E5%94%AE%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AE%A1%E7%90%86&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=32ae9cb8fa33c130&recruitType=1&positionType=0%2F1227%2F132806&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=cde38b1fddb9adc0&recruitType=1&positionType=0%2F1227%2F132806&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=65e0291d8867671a&recruitType=1&positionType=0%2F1227%2F132809%2F132861&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=336c02aef5c8148f&recruitType=1&positionType=0%2F1227%2F132809%2F132861&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=312082a8f3b2e6a1&recruitType=1&positionType=0%2F1227%2F132806&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=6e9a485dc528c1c0&recruitType=1&positionType=0%2F1227%2F132806&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=489af04ede1cdbbb&recruitType=1&positionType=0%2F1227%2F132806&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=ed298b1e32483df6&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=4640037f35ecf0e4&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=2cc10d0ddb9d30bb&recruitType=1&positionType=0%2F1227%2F132807%2F132853&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=5a92487b3befcc61&recruitType=1&positionType=0%2F1227%2F132802%2F132830%2F132967&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=6d26c4142f437ca0&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=4cb08aa01d2917ce&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=267385f03d814e52&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=3ce4fbb3642f1888&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=d8eb3a71edb2f05c&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=3ef2f89cb8eca9ec&recruitType=1&positionType=0%2F1227%2F132802%2F132830%2F132967&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=7a53f2ef10010f76&recruitType=1&positionType=0%2F1227%2F132809%2F132865%2F133142&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=f7942ada704fc3c9&recruitType=1&positionType=0%2F1227%2F132809%2F132865%2F133142&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=a2ac5e85b8157b58&recruitType=1&positionType=0%2F1227%2F132809%2F132865%2F133142&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=483d8c219cdc6874&recruitType=1&positionType=0%2F1227%2F132809%2F132865%2F133142&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=84b2ebe3b5a73240&recruitType=1&positionType=0%2F1227%2F132802%2F132830%2F132967&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=48be38b1467b0bdd&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=be79464b003df770&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=6ee10b46e14f5a54&recruitType=1&positionType=N%2F%E7%A7%91%E5%88%9B%E7%AE%A1%E7%90%86&columnId=1&brandCode=1&importPost=0",
+      "decision": "accepted",
+      "reasonCode": "broad-engineering-eligibility-needs-confirmation",
+      "reason": "官网专业条件明确使用理工科相关专业口径，学历与届别条件已核对；按高召回规则保留为需要确认岗位，不因岗位名称或非医疗职责排除。",
+      "semanticBasis": "结论只依据官网职位详情中的专业门类、学历、届别及其他硬条件；岗位职责仅用于排序和风险提示。",
+      "priority": 64,
+      "matchLevel": "需要确认",
+      "matchReason": "官网专业条件采用理工科相关专业口径，投递前需向招聘单位确认专业目录认定。",
+      "tags": [
+        "理工科相关专业",
+        "需要确认"
+      ]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=bed67ecd6820cef6&recruitType=1&positionType=N%2F%E6%B5%8B%E8%AF%95&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=2d2c9938ff266a88&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=9a79414b2b15034d&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=6ae41af076800d84&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=90188d14d29d0a37&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=04ade22a480f0533&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=08e919b392f0753c&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=aa75bbab001bdda4&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=39e1a15a24041d47&recruitType=1&positionType=0%2F1227%2F132809%2F132865%2F133142&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=ecdcd13261a36019&recruitType=1&positionType=0%2F1227%2F132802%2F132830%2F132967&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=7d51450c629254ef&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=50a42d2dd6c19a8a&recruitType=1&positionType=0%2F1227%2F132815%2F132883%2F133184&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=b56b1bad691d89da&recruitType=1&positionType=0%2F1227%2F132815%2F132888%2F133202&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=7b343b0921331679&recruitType=1&positionType=0%2F1227%2F132815%2F132885%2F133194&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=3168301d591891f4&recruitType=1&positionType=0%2F1227%2F132801%2F132823%2F132921&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=fd640b23382cdd8c&recruitType=1&positionType=0%2F1227%2F132801%2F132823%2F132921&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=60ca335a6a1d4c1d&recruitType=1&positionType=0%2F1227%2F132801%2F106553&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=b0e5447c4bd974b7&recruitType=1&positionType=0%2F1227%2F132815%2F132891%2F133206&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=134898d3fa80c973&recruitType=1&positionType=0%2F1227%2F132805%2F132843%2F133060&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=295def691511aa2e&recruitType=1&positionType=0%2F1227%2F132805%2F132846%2F133081&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=5978e355333c550e&recruitType=1&positionType=0%2F1227%2F132809&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=cd99aea09901ef3a&recruitType=1&positionType=0%2F1227%2F132809%2F132861%2F133130&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=4e6a2cc9daa3287e&recruitType=1&positionType=0%2F1227%2F132802%2F132830&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=1c55d0dc2824a711&recruitType=1&positionType=0%2F1227%2F132809%2F132862%2F133133&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "pure-computing-no-biomedical-bridge",
+      "reason": "岗位属于纯计算机、软件、数据或算法方向，官网详情未提供明确的生物医学交叉应用场景，因此按当前运行手册不发布。",
+      "semanticBasis": "已先核对官网专业、学历和届别硬条件，再依据当前规则检查纯计算岗位是否具有明确生物医学交叉场景；岗位名称本身不是自动判断依据。",
+      "priority": 64,
+      "matchLevel": "需要确认",
+      "matchReason": "官网专业条件采用理工科相关专业口径，投递前需向招聘单位确认专业目录认定。",
+      "tags": [
+        "理工科相关专业",
+        "需要确认"
+      ]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=a1999bad8b694ee4&recruitType=1&positionType=0%2F1227%2F132809%2F132862%2F133133&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "pure-computing-no-biomedical-bridge",
+      "reason": "岗位属于纯计算机、软件、数据或算法方向，官网详情未提供明确的生物医学交叉应用场景，因此按当前运行手册不发布。",
+      "semanticBasis": "已先核对官网专业、学历和届别硬条件，再依据当前规则检查纯计算岗位是否具有明确生物医学交叉场景；岗位名称本身不是自动判断依据。",
+      "priority": 64,
+      "matchLevel": "需要确认",
+      "matchReason": "官网专业条件采用理工科相关专业口径，投递前需向招聘单位确认专业目录认定。",
+      "tags": [
+        "理工科相关专业",
+        "需要确认"
+      ]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=56b8886f3f034c32&recruitType=1&positionType=0%2F1227%2F132809%2F132862%2F133133&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "pure-computing-no-biomedical-bridge",
+      "reason": "岗位属于纯计算机、软件、数据或算法方向，官网详情未提供明确的生物医学交叉应用场景，因此按当前运行手册不发布。",
+      "semanticBasis": "已先核对官网专业、学历和届别硬条件，再依据当前规则检查纯计算岗位是否具有明确生物医学交叉场景；岗位名称本身不是自动判断依据。",
+      "priority": 64,
+      "matchLevel": "需要确认",
+      "matchReason": "官网专业条件采用理工科相关专业口径，投递前需向招聘单位确认专业目录认定。",
+      "tags": [
+        "理工科相关专业",
+        "需要确认"
+      ]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=4c06c9f923932d88&recruitType=1&positionType=0%2F1227%2F132809%2F132862%2F133133&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "pure-computing-no-biomedical-bridge",
+      "reason": "岗位属于纯计算机、软件、数据或算法方向，官网详情未提供明确的生物医学交叉应用场景，因此按当前运行手册不发布。",
+      "semanticBasis": "已先核对官网专业、学历和届别硬条件，再依据当前规则检查纯计算岗位是否具有明确生物医学交叉场景；岗位名称本身不是自动判断依据。",
+      "priority": 64,
+      "matchLevel": "需要确认",
+      "matchReason": "官网专业条件采用理工科相关专业口径，投递前需向招聘单位确认专业目录认定。",
+      "tags": [
+        "理工科相关专业",
+        "需要确认"
+      ]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=f062bd5470866062&recruitType=1&positionType=0%2F1227%2F132809%2F132861&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "pure-computing-no-biomedical-bridge",
+      "reason": "岗位属于纯计算机、软件、数据或算法方向，官网详情未提供明确的生物医学交叉应用场景，因此按当前运行手册不发布。",
+      "semanticBasis": "已先核对官网专业、学历和届别硬条件，再依据当前规则检查纯计算岗位是否具有明确生物医学交叉场景；岗位名称本身不是自动判断依据。",
+      "priority": 64,
+      "matchLevel": "需要确认",
+      "matchReason": "官网专业条件采用理工科相关专业口径，投递前需向招聘单位确认专业目录认定。",
+      "tags": [
+        "理工科相关专业",
+        "需要确认"
+      ]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=c1580039e55a668b&recruitType=1&positionType=0%2F1227%2F132809%2F132861&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=99297a10eacd80d6&recruitType=1&positionType=0%2F1227%2F132809%2F132865%2F133142&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=68a9bdd7e797468f&recruitType=1&positionType=0%2F1227%2F132809%2F132865%2F133142&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=a0bcdb574b98cd45&recruitType=1&positionType=0%2F1227%2F132809%2F132868%2F133146&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=177f8bca49c545e8&recruitType=1&positionType=0%2F1227%2F132809%2F132860%2F133127&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=07b79ebbbbee08eb&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133223&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=d515312c9afe63dc&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=121894cac32c3f85&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=027f7909fbeb3bab&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=61a53e14cb0754e9&recruitType=1&positionType=N%2F%E5%BC%80%E5%8F%91&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=e4d06b1eb1586e8d&recruitType=1&positionType=N%2F%E4%B8%9A%E5%8A%A1%E6%9E%B6%E6%9E%84%E5%B8%88&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=ff9d0f1d2004591a&recruitType=1&positionType=N%2F%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88%E7%BB%8F%E7%90%86&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=22a6a5ddf7c6350e&recruitType=1&positionType=0%2F1227%2F132809%2F132868%2F133146&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=5274f39912a8aba9&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133214&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=ec84c54109cbd2ce&recruitType=1&positionType=N%2F%E9%9C%80%E6%B1%82%E8%AE%BE%E8%AE%A1&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=bc12bedff89e1f5b&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133213&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=42bb0d9578b26930&recruitType=1&positionType=0%2F1227%2F132817%2F132893%2F133213&columnId=1&brandCode=1&importPost=0",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=6b98249c495fef30&recruitType=1&positionType=0%2F1227%2F132806&columnId=1&brandCode=1&importPost=0",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=fa21e8df40c7e17f&recruitType=1&positionType=0%2F1227%2F132803&columnId=1&brandCode=1&importPost=0",
+      "decision": "accepted",
+      "reasonCode": "broad-engineering-eligibility-needs-confirmation",
+      "reason": "官网专业条件明确使用理工科相关专业口径，学历与届别条件已核对；按高召回规则保留为需要确认岗位，不因岗位名称或非医疗职责排除。",
+      "semanticBasis": "结论只依据官网职位详情中的专业门类、学历、届别及其他硬条件；岗位职责仅用于排序和风险提示。",
+      "priority": 64,
+      "matchLevel": "需要确认",
+      "matchReason": "官网专业条件采用理工科相关专业口径，投递前需向招聘单位确认专业目录认定。",
+      "tags": [
+        "理工科相关专业",
+        "需要确认"
+      ]
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=97b801da8709ae4e&recruitType=1&positionType=0%2F1227%2F132809%2F132862%2F133133&columnId=1&brandCode=1&importPost=",
+      "decision": "rejected",
+      "reasonCode": "pure-computing-without-biomedical-bridge",
+      "reason": "官网职位要求和职责为通用软件研发、云网与计算机通信方向，未出现明确生物医学交叉场景，按当前规则不发布。",
+      "semanticBasis": "已核对官网详情的专业、学历、届别、职责和任职要求；纯软件与计算岗位只有明确生物医学应用桥接时才保留。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=2f7a8e20df547e47&recruitType=1&positionType=0%2F1227%2F132807%2F132856%2F133115&columnId=1&brandCode=1&importPost=",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=88ca3e935fb636d1&recruitType=1&positionType=0%2F1227%2F109100%2F109219%2F109230&columnId=1&brandCode=1&importPost=",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=49a6eee1af37c58b&recruitType=1&positionType=0%2F1227%2F109100%2F109203%2F109207&columnId=1&brandCode=1&importPost=",
+      "decision": "deferred",
+      "reasonCode": "official-major-not-stated",
+      "reason": "官网职位详情未明确列出可报专业范围，无法确认专业硬条件，暂不发布并保留待核验。",
+      "semanticBasis": "已核对官网详情的学历、届别、职责和任职要求；由于专业字段缺失，未把岗位名称或技能要求推断为专业资格。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=9f6d6afd972948ef&recruitType=1&positionType=0%2F1227%2F132807%2F132856%2F133115&columnId=1&brandCode=1&importPost=",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=cb44aca3634c816b&recruitType=1&positionType=0%2F1227%2F109100%2F109203%2F109207&columnId=1&brandCode=1&importPost=",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=c7aec9b5ef297618&recruitType=1&positionType=0%2F1227%2F109100%2F109200%2F109224&columnId=1&brandCode=1&importPost=",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=e316d7964c952a01&recruitType=1&positionType=0%2F1227%2F109100%2F109203%2F109207&columnId=1&brandCode=1&importPost=",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    },
+    {
+      "officialUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/webPosition210!getOnePosition?postIdEnc=f8e9b3d7ea444261&recruitType=1&positionType=0%2F1227%2F109100%2F109203%2F109207&columnId=1&brandCode=1&importPost=",
+      "decision": "rejected",
+      "reasonCode": "official-major-not-covered",
+      "reason": "官网专业条件列明的专业范围未明确覆盖生物医学工程、相近医学或生物专业、工学理工门类或不限专业，因此不发布。",
+      "semanticBasis": "结论只依据官网专业资格字段与学历、届别等硬条件；没有因岗位名称、行业或职责缺少医疗词而排除。"
+    }
+  ]
+}

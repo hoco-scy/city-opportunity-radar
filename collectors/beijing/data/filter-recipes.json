@@ -1,0 +1,1663 @@
+{
+  "version": 3,
+  "verifiedAt": "2026-08-22T18:11:00+08:00",
+  "city": "北京",
+  "collectionPolicy": {
+    "rule": "已验证的公开公告/API/附件入口优先由脚本采集；浏览器只用于首次建模、官方改版或脚本无法完成的详情回退。招聘门户仍先用官方结构化筛选、分页、去重，之后才逐项官方核验。",
+    "scriptMayOnlyUse": "官方公开列表、公开详情页和浏览器确认的公开请求；不得绕过登录、验证码、WAF 或访问控制。",
+    "browserMayNotBeReplacedBy": "搜索摘要、转载或未核验第三方页面。"
+  },
+  "recipes": [
+    {
+      "sourceId": "national-civil",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "http://bm.scs.gov.cn/pp/gkweb/core/web/ui/business/home/gkhome.html",
+      "accessMode": "script-official-public-api",
+      "nativeFilters": [
+        "当年考试项目",
+        "公告",
+        "职位表",
+        "报考指南"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "脚本请求国考主入口与补充录用入口的公开前端配置，读取当期专题 ID 与官方 API 域名。",
+          "脚本请求专题公告 JSON、每条公告详情和官方附件；主入口失败时继续处理补充录用入口。",
+          "职位表以官方附件或公开查询接口为准，在本地结构化解析后再按公考硬条件组合筛选。"
+        ],
+        "completionRule": "两个登记入口中任一页面能正常呈现而职位表尚未发布时，记录 checked-no-new-position-table；不得因另一入口网关波动写 temporarily-unavailable"
+      },
+      "availabilityRule": "主入口或补充录用入口任一返回非错误官方页面，即证明入口可用；未完成动态内容只可记 accessible-incomplete。",
+      "observations": [],
+      "notes": "两条入口均为国家公务员局登记的 HTTP 官方路径；必须记录每条路径的最终页面或错误证据。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-spa-config-and-json-announcement-collector",
+        "steps": [
+          "运行 node scripts/collect-public-exams.mjs --source national-civil，脚本从官方首页配置发现当期专题，不硬编码年度地址。",
+          "脚本读取公告详情和官方附件；需要职位表时加 --parse-position-tables。",
+          "按全部公开资格字段进行本地硬门禁；只有通过后才可另行写入具体岗位。"
+        ],
+        "completion": "主入口与补充录用入口均产生官方请求证据；公告详情和可公开下载附件已采集。",
+        "fallback": "官方前端配置或公开接口改版时，先记录可访问未完成并用浏览器重新校准公开请求；不得绕过登录或验证码。",
+        "implementation": {
+          "command": "node scripts/collect-public-exams.mjs --source national-civil --parse-position-tables",
+          "smokeTest": "node scripts/collect-public-exams.mjs --source national-civil --max-notices 5 --summary",
+          "runtime": "Node.js 18+；npm ci --ignore-scripts 后运行；只访问国家公务员局登记域名。",
+          "hardGuard": "从实时官方配置读取专题 ID；主、补入口分别记录结果，任何一条失败都不能伪称无公告。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮已打开官方页面并确认可呈现公开内容或筛选界面。",
+        "evidence": [
+          {
+            "method": "browser-ui-check",
+            "target": "http://bm.scs.gov.cn/pp/gkweb/core/web/ui/business/home/gkhome.html",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "beijing-civil",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.beijing.gov.cn/gongkai/rsxx/gwyzk/",
+      "accessMode": "script-official-static-list",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "脚本读取官方公告列表与可用分页，按官方链接进入每条相关公告详情。",
+          "脚本发现并下载官方职位表附件，使用结构化解析器而非逐行网页浏览。",
+          "对结构化结果执行完整公考资格门禁，单独流程才可发布具体岗位。"
+        ],
+        "completionRule": "公告页和职位表（或官方明确尚未发布的空状态）均已用浏览器确认，并对附件解析结果保留官方链接。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-static-announcement-and-workbook-collector",
+        "steps": [
+          "运行 node scripts/collect-public-exams.mjs --source beijing-civil --parse-position-tables。",
+          "脚本保存公告、附件 URL、文件摘要和解析出的结构化职位行；不直接改写公开岗位数据。",
+          "后续硬资格判断必须逐项使用职位表字段。"
+        ],
+        "completion": "公告列表、每条公告详情和可识别职位表附件均有脚本访问证据。",
+        "fallback": "页面改版或附件无可识别表头时标为 accessible-incomplete，并用浏览器只校准一次公开结构。",
+        "implementation": {
+          "command": "node scripts/collect-public-exams.mjs --source beijing-civil --parse-position-tables",
+          "smokeTest": "node scripts/collect-public-exams.mjs --source beijing-civil --max-notices 8 --summary",
+          "runtime": "Node.js 18+；npm ci --ignore-scripts 后运行；只访问 beijing.gov.cn。",
+          "hardGuard": "附件必须是官方域名且每张表须识别职位表头；解析失败不得被写为无岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮已打开官方页面并确认可呈现公开内容或筛选界面。",
+        "evidence": [
+          {
+            "method": "browser-ui-check",
+            "target": "https://www.beijing.gov.cn/gongkai/rsxx/gwyzk/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "beijing-selection-program",
+      "status": "route-verified",
+      "observedAt": "2026-08-23",
+      "officialEntryUrl": "https://rsj.beijing.gov.cn/xxgk/tzgg/",
+      "collectionEntryUrl": "https://career.buaa.edu.cn/frontpage/buaa/html/newsList.html?id=5453aeeb99e74d78aea0b45fd456ae68",
+      "accessMode": "script-official-university-announcement-api",
+      "nativeFilters": [
+        "北航就业信息网栏目：公务员／选调生",
+        "标题：北京市 + 定向选调／优培 + 应届优秀大学毕业生"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "页面的信息源卡片保留北京市人社局原生入口；脚本读取北航就业网“公务员／选调生”公开栏目全部分页，不扫描未筛选的全站招聘列表。",
+          "仅打开标题命中北京应届定向选调／优培的详情，并确认正文标明中共北京市委组织部为发布机关，再提取附件和报名期限。",
+          "报名期有效时再结构化解析职位表；预公告保留为公告级待核验，不能发布为具体可报岗位。"
+        ],
+        "completionRule": "选调高校公开栏目全部分页、北京标题命中详情和可见附件均有本轮访问证据；尚未发布职位表时记录待跟踪，而非无岗位。"
+      },
+      "availabilityRule": "原生政府入口供用户直接访问；后台采集以选调高校公开栏目和详情发布机关为准。栏目、详情或附件未完整返回时只能记 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-university-selection-announcement-collector",
+        "steps": [
+          "运行 node scripts/collect-public-exams.mjs --source beijing-selection-program --parse-position-tables。",
+          "采集器从北航就业网公开栏目完成分页，筛出北京应届定向选调／优培标题后才请求详情并保留附件 URL、报名期限和解析错误。",
+          "只将报名窗口未过或明确预公告写入匿名审核记录，具体岗位仍须走私有资格门禁。"
+        ],
+        "completion": "选调高校栏目、北京匹配详情和公开附件路径均被采集；没有当期公告时记录 checked-no-active-campaign。",
+        "fallback": "栏目接口、分页或附件不完整时记录 accessible-incomplete，再用浏览器校准公开结构；原生政府入口不作为批量扫描回退。",
+        "implementation": {
+          "command": "node scripts/collect-public-exams.mjs --source beijing-selection-program --parse-position-tables",
+          "smokeTest": "node scripts/collect-public-exams.mjs --source beijing-selection-program --max-notices 8 --summary",
+          "runtime": "Node.js 18+；npm ci --ignore-scripts 后运行；只访问 career.buaa.edu.cn 的公开栏目、详情和附件。",
+          "hardGuard": "标题命中不足以入库：详情必须确认中共北京市委组织部或北京市人社局的官方发布链，且明确面向应届毕业生；拟录用、公示、成绩和资格审核等流程通知必须排除。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "原生北京市人社入口保留给用户；北航就业网“选调生”公开栏目可匿名分页访问，详情逐条确认发布机关。",
+        "evidence": [
+          {
+            "method": "official-university-public-api-check",
+            "target": "https://career.buaa.edu.cn/f/newsCenter/ajax_list",
+            "outcome": "公开“选调生”栏目接口返回分页，无需登录",
+            "checkedAt": "2026-08-23T17:30:00+08:00"
+          }
+        ],
+        "nextAction": "每轮完成栏目分页后，按北京标题筛选并在详情确认发布机关；当年职位表发布后再触发结构化逐岗处理。"
+      }
+    },
+    {
+      "sourceId": "beijing-personnel-exam",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://rsj.beijing.gov.cn/ywsite/bjpta/xwzx/zytz/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source beijing-personnel-exam，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source beijing-personnel-exam，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source beijing-personnel-exam",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source beijing-personnel-exam",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://rsj.beijing.gov.cn/ywsite/bjpta/xwzx/zytz/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "beijing-institutions",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://rsj.beijing.gov.cn/xxgk/gkzp/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source beijing-institutions，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source beijing-institutions，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source beijing-institutions",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source beijing-institutions",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://rsj.beijing.gov.cn/xxgk/gkzp/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "central-institutions",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.mohrss.gov.cn/SYrlzyhshbzb/fwyd/SYkaoshizhaopin/zyhgjjgsydwgkzp/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source central-institutions，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source central-institutions，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source central-institutions",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source central-institutions",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://www.mohrss.gov.cn/SYrlzyhshbzb/fwyd/SYkaoshizhaopin/zyhgjjgsydwgkzp/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "china-public-recruitment",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://job.mohrss.gov.cn/cjobs/institution/listInstitution",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source china-public-recruitment，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "fallback": "HTTPS 无法连接时切换到登记的同路径 HTTP 官方入口，不得据此判断没有公告",
+        "positionHandling": "进入公告和官方附件后再按地点、届别、学历与专业字段筛选具体岗位",
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "HTTPS 无法连接但登记的 HTTP 同路径返回非错误官方页面时，来源不是 temporarily-unavailable；附件或分页未完成时记 accessible-incomplete。",
+      "observations": [],
+      "notes": "该入口以公告列表为主，没有可靠的逐岗资格筛选器；2026-08-22 实测 HTTP 入口可完整返回。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source china-public-recruitment，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source china-public-recruitment",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source china-public-recruitment",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available-via-official-fallback",
+        "summary": "官方备用/兼容入口可呈现；主 HTTPS 路由的不稳定不等于来源失效。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "http://job.mohrss.gov.cn/cjobs/institution/listInstitution",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "运行时优先按登记顺序打开主入口；失败后使用本轮已确认的官方备用入口。"
+      }
+    },
+    {
+      "sourceId": "central-sasac-recruitment",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.sasac.gov.cn/n2588035/n2588325/n2588350/index.html",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source central-sasac-recruitment，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "fallback": "桌面站超时或证书链异常时切换到登记的官方 WAP HTTP 页面",
+        "positionHandling": "公告没有岗位附件时记为 deferred；有附件时拆到具体岗位",
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "桌面页异常但登记的 WAP 页面返回非错误官方栏目时，来源不是 temporarily-unavailable；附件未处理完时记 accessible-incomplete。",
+      "observations": [],
+      "notes": "2026-08-22 实测桌面入口超时，官方 WAP HTTP 页面可返回完整栏目。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source central-sasac-recruitment，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source central-sasac-recruitment",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source central-sasac-recruitment",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available-via-official-fallback",
+        "summary": "官方备用/兼容入口可呈现；主 HTTPS 路由的不稳定不等于来源失效。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "http://wap.sasac.gov.cn/n2588035/n2588325/n2588350/index.html",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "运行时优先按登记顺序打开主入口；失败后使用本轮已确认的官方备用入口。"
+      }
+    },
+    {
+      "sourceId": "central-enterprise-roster",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.sasac.gov.cn/n2588045/n27271785/n27271792/c14159097/content.html",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source central-enterprise-roster，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "登记的 WAP 同文路径返回非错误官方页面时，来源状态必须是 checked-roster-current 或 accessible-incomplete。",
+      "observations": [],
+      "notes": "桌面 HTTPS 可能超时；官方 WAP 同文路径已核验可用。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source central-enterprise-roster，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source central-enterprise-roster",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source central-enterprise-roster",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available-via-official-fallback",
+        "summary": "官方备用/兼容入口可呈现；主 HTTPS 路由的不稳定不等于来源失效。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "http://wap.sasac.gov.cn/n2588045/n27271785/n27271792/c14159097/content.html",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "运行时优先按登记顺序打开主入口；失败后使用本轮已确认的官方备用入口。"
+      }
+    },
+    {
+      "sourceId": "beijing-state-assets",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://gzw.beijing.gov.cn/yggq/gqzp/index.html",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source beijing-state-assets，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source beijing-state-assets，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source beijing-state-assets",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source beijing-state-assets",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://gzw.beijing.gov.cn/yggq/gqzp/index.html",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "picc-campus",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://picc.zhiye.com/custom/xiaoyuan?hideAll=true",
+      "accessMode": "browser-official-page",
+      "nativeFilters": [
+        "招聘类型：校园招聘/应届生",
+        "工作地点：北京",
+        "职位类别：科技、医疗健康、精算/风控/综合中与专业相符项",
+        "截止状态：未截止"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "科技类岗位 + 北京市",
+          "综合类岗位 + 北京市"
+        ],
+        "keywordRule": "北京安全筛选后的并集不超过 100 时直接复核全部结果，不再使用关键词缩小；超过 150 时才运行广义关键词族并取并集",
+        "otherRegions": "按周轮换地区并使用广义关键词族，仅作为低优先级补充"
+      },
+      "availabilityRule": "校园招聘首页或任一已登记项目页能返回非错误官方页面时，列表未复现只能记 accessible-incomplete。",
+      "observations": [
+        {
+          "segment": "综合类岗位",
+          "unfilteredCount": 1888,
+          "beijingCount": 57,
+          "pageCount": 6
+        },
+        {
+          "segment": "科技类岗位",
+          "unfilteredCount": 73,
+          "beijingCount": 12,
+          "pageCount": 2
+        },
+        {
+          "segment": "北京市两类岗位去重后",
+          "nativeFilteredCount": 69,
+          "reviewedCount": 69,
+          "reviewedAt": "2026-08-22T17:55:00+08:00"
+        }
+      ],
+      "notes": "官网北京筛选结果低于 100 条时直接逐岗展开详情；2026-08-22 已完成综合类 57 条、科技类 12 条的全量详情复核。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-public-structured-list-script",
+        "steps": [
+          "在浏览器中打开官方入口，确认列表、公告或搜索区已真实加载；不把搜索摘要或跳转错误页当作来源可用。",
+          "使用页面已呈现的地点、招聘类型、学历、岗位类别、发布时间或关键词控件；保留本轮实际筛选组合和筛选后数量。",
+          "只在已应用筛选的结果集中翻页或加载更多；记录页数/空状态并按官方详情链接或职位代码去重，不遍历未筛选的大型全集。",
+          "仅对筛选候选打开官方详情、公告正文和附件核验；控件、分页或附件不稳定时记录 accessible-incomplete，不猜测或绕过访问控制。"
+        ],
+        "nativeFilters": [
+          "招聘类型：校园招聘/应届生",
+          "工作地点：北京",
+          "职位类别：科技、医疗健康、精算/风控/综合中与专业相符项",
+          "截止状态：未截止"
+        ],
+        "pagination": "读取官方响应的总页数/下一页标记；只遍历已应用原生筛选后的结果集。",
+        "deduplicateBy": [
+          "官方职位代码",
+          "官方详情链接",
+          "单位 + 职位名称 + 工作地点"
+        ],
+        "modelBoundary": "专业是否可报只读取官方任职条件；岗位职责和行业场景只用于优先级排序，不得作为删除条件。",
+        "completion": "脚本已校验官方 PortalId 与地点代码，使用校园招聘和城市原生筛选，遍历全部返回分页并逐条读取任职条件。",
+        "fallback": "公开接口改版或暂时不可用时重试三次并保留上次已核验岗位；不得以临时失败清空岗位，也不得退回逐岗浏览器操作。",
+        "implementation": {
+          "command": "node scripts/collect-picc-campus.mjs --all-pages",
+          "smokeTest": "node scripts/collect-picc-campus.mjs --city 北京",
+          "runtime": "Node.js 18+；无需登录、Cookie 或浏览器；只访问 picc.zhiye.com 的公开页面、地点条件和岗位列表接口。",
+          "hardGuard": "必须同时校验实时 PortalId、官方城市代码、校园招聘类别、Count 分页闭合和每条任职条件；任一步失败不得写成 0 岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://picc.zhiye.com/custom/xiaoyuan?hideAll=true",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "boe-campus",
+      "status": "script-verified",
+      "observedAt": "2026-08-24",
+      "officialEntryUrl": "https://campus.boe.com/jobs?hideMenu=1",
+      "accessMode": "script-official-public-api",
+      "nativeFilters": [
+        "招聘分类：校园招聘（官方分类 15）",
+        "工作城市：北京",
+        "学历：硕士可报",
+        "任职条件：生物医学工程、相近专业、工学/理工类或不限专业"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "脚本从京东方官方页面读取实时 PortalId，禁止硬编码失效门户配置。",
+          "脚本调用官方地点条件接口确认城市选项，再以校园招聘分类和城市代码请求职位列表全部分页。",
+          "先排除实习岗位；是否可报只读取官方任职条件中的专业和学历，岗位标题与职责只参与排序。"
+        ],
+        "completionRule": "PortalId、官方城市选项、职位总量、全部分页、去重数量及专业筛选数量均有本轮结构化证据。"
+      },
+      "observations": [],
+      "notes": "已确认京东方公开招聘 API、校园招聘分类和四城地点选项；正常更新不需要浏览器逐岗查看。",
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-structured-campus-api",
+        "steps": [
+          "脚本从京东方官方页面读取实时 PortalId，禁止硬编码失效门户配置。",
+          "脚本调用官方地点条件接口确认城市选项，再以校园招聘分类和城市代码请求职位列表全部分页。",
+          "先排除实习岗位；是否可报只读取官方任职条件中的专业和学历，岗位标题与职责只参与排序。"
+        ],
+        "nativeFilters": [
+          "招聘分类：校园招聘（官方分类 15）",
+          "工作城市：北京",
+          "学历：硕士可报",
+          "任职条件：生物医学工程、相近专业、工学/理工类或不限专业"
+        ],
+        "pagination": "读取官方 Count 后遍历校园招聘+城市筛选结果全部分页。",
+        "deduplicateBy": [
+          "官方 JobAdId",
+          "官方职位代码"
+        ],
+        "modelBoundary": "报名资格只由官方任职条件中的专业、学历和招聘对象决定；岗位名称、职责和行业相关度只影响排序与风险提示。",
+        "completion": "PortalId、官方城市选项、职位总量、全部分页、去重数量及专业筛选数量均有本轮结构化证据。",
+        "fallback": "公开接口临时失败时重试三次并保留上次已核验岗位；不得回退为浏览器逐岗扫描。",
+        "implementation": {
+          "command": "node scripts/collect-boe-campus.mjs",
+          "smokeTest": "node scripts/collect-boe-campus.mjs --city 北京",
+          "runtime": "Node.js 18+；无需登录；只访问登记的官方公开接口。",
+          "hardGuard": "必须验证实时 PortalId、校园招聘分类、官方城市选项和完整分页。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "官方校园招聘页与结构化职位接口已核验。",
+        "evidence": [
+          {
+            "method": "browser-ui-check",
+            "target": "https://campus.boe.com/jobs?hideMenu=1",
+            "outcome": "official campus homepage with 2027 early-batch recruitment notice",
+            "checkedAt": "2026-08-22T19:28:00+08:00"
+          }
+        ],
+        "nextAction": "下轮直接运行专用脚本并记录采集量和专业筛选后数量。"
+      }
+    },
+    {
+      "sourceId": "sinopharm-careers",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.sinopharm.com/recruitment.html",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source sinopharm-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source sinopharm-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source sinopharm-careers",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source sinopharm-careers",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://www.sinopharm.com/recruitment.html",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "genertec-official",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.gt.cn/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source genertec-official，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source genertec-official，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source genertec-official",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source genertec-official",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://www.gt.cn/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "crc-careers",
+      "status": "script-verified",
+      "observedAt": "2026-08-24",
+      "officialEntryUrl": "https://careers.crc.com.cn/index.html",
+      "accessMode": "script-official-public-api",
+      "nativeFilters": [
+        "招聘类型：校园招聘（A02）",
+        "工作城市：北京",
+        "学历：硕士可报",
+        "任职条件：生物医学工程、相近专业、工学/理工类或不限专业"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "脚本先调用华润公开网关读取实时官网配置，确认返回的是华润集团招聘官网。",
+          "脚本按官方总量遍历公开职位全部分页，使用返回的招聘类型和地点字段保留当前城市校园招聘。",
+          "是否可报只读取官方任职条件中的专业和学历，岗位标题与职责只参与排序。"
+        ],
+        "completionRule": "官网配置、官方职位总量、全部分页、去重数量、城市校招数量及专业筛选数量均有本轮结构化证据。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-public-gateway-batch-api",
+        "steps": [
+          "脚本先调用华润公开网关读取实时官网配置，确认返回的是华润集团招聘官网。",
+          "脚本按官方总量遍历公开职位全部分页，使用返回的招聘类型和地点字段保留当前城市校园招聘。",
+          "是否可报只读取官方任职条件中的专业和学历，岗位标题与职责只参与排序。"
+        ],
+        "nativeFilters": [
+          "招聘类型：校园招聘（A02）",
+          "工作城市：北京",
+          "学历：硕士可报",
+          "任职条件：生物医学工程、相近专业、工学/理工类或不限专业"
+        ],
+        "pagination": "每页 300 条，按官方 total 遍历全部分页，再以官方返回的 A02 和地点字段本地过滤。",
+        "deduplicateBy": [
+          "官方 pubPositionId + typeId"
+        ],
+        "modelBoundary": "报名资格只由官方任职条件中的专业、学历和招聘对象决定；岗位名称、职责和行业相关度只影响排序与风险提示。",
+        "completion": "官网配置、官方职位总量、全部分页、去重数量、城市校招数量及专业筛选数量均有本轮结构化证据。",
+        "fallback": "公开接口临时失败时重试三次并保留上次已核验岗位；不得回退为浏览器逐岗扫描。",
+        "implementation": {
+          "command": "node scripts/collect-crc-careers.mjs",
+          "smokeTest": "node scripts/collect-crc-careers.mjs --city 北京",
+          "runtime": "Node.js 18+；无需登录；只访问登记的官方公开接口。",
+          "hardGuard": "必须验证华润官网配置、官方 total、完整分页、A02 招聘类型和返回地点字段。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "官方公开职位网关与分页结构已核验。",
+        "evidence": [
+          {
+            "method": "official-browser-route-check",
+            "target": "https://runjob.crc.com.cn/#/complex/homepage?id=1769554545615040514",
+            "outcome": "official recruitment subsite reached",
+            "checkedAt": "2026-08-22T18:59:00+08:00"
+          }
+        ],
+        "nextAction": "下轮直接运行专用脚本并记录采集量和专业筛选后数量。"
+      },
+      "notes": "已确认华润公开职位网关和完整分页结构；正常更新直接批量采集，不使用浏览器逐岗查看。"
+    },
+    {
+      "sourceId": "cec-campus",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://campus.cec.com.cn/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [
+        "招聘类型：校园招聘/应届生",
+        "工作地点：北京",
+        "职位类别：研发、医疗电子、仪器、工程中与专业相符项",
+        "截止状态：未截止"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source cec-campus，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source cec-campus，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source cec-campus",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source cec-campus",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://campus.cec.com.cn/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "cetc-recruitment",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.cetc.com.cn/zgdk/1593037/zpjgg/index.html",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source cetc-recruitment，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source cetc-recruitment，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source cetc-recruitment",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source cetc-recruitment",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://www.cetc.com.cn/zgdk/1593037/zpjgg/index.html",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "sgcc-careers",
+      "status": "browser-required",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://zhaopin.sgcc.com.cn/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source sgcc-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source sgcc-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source sgcc-careers",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source sgcc-careers",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "browser-recovery-required",
+        "summary": "脚本式入口请求触发官方 WAF 412；来源并非判定为无岗位。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://zhaopin.sgcc.com.cn/",
+            "outcome": "HTTP 412 WAF response",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "只用真实浏览器检查官方公告和公开职位页；不得尝试绕过验证码、反爬或访问控制。"
+      }
+    },
+    {
+      "sourceId": "cnpc-careers",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.cnpc.com.cn/cnpc/index.shtml",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source cnpc-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source cnpc-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source cnpc-careers",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source cnpc-careers",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available-via-official-fallback",
+        "summary": "中国石油集团官网及“职业中心”可在浏览器打开；招聘门户本轮仍返回 502，因此具体岗位只从官网公告与附件核验。",
+        "evidence": [
+          {
+            "method": "browser-ui-check",
+            "target": "https://www.cnpc.com.cn/cnpc/index.shtml",
+            "outcome": "集团官网已呈现职业中心导航",
+            "checkedAt": "2026-08-22T19:13:00+08:00"
+          }
+        ],
+        "nextAction": "每轮从职业中心追踪新项目、职位表和投递入口；招聘门户恢复后再在浏览器核验具体岗位，绝不绕过证书或网关错误。"
+      },
+      "failureSignals": [
+        "http-502",
+        "no-non-error-primary-page"
+      ]
+    },
+    {
+      "sourceId": "sinopec-careers",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://job.sinopec.com/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [
+        "招聘项目：校园招聘",
+        "工作地点/单位所在地：北京",
+        "学历：硕士及以上",
+        "专业或岗位类别：仅保留有生物医学工程交集或官方允许的工学岗位"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source sinopec-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。",
+        "fallback": "页面路由加载失败时从集团公告或企业公告重新进入当期招聘专题"
+      },
+      "availabilityRule": "首页或校园招聘路由任一返回非错误官方页面时，路由内容未加载只能记 accessible-incomplete。",
+      "observations": [],
+      "notes": "首页和校园招聘路由可用；该站是 JavaScript 应用，必须在浏览器中等待职位模块加载。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source sinopec-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source sinopec-careers",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source sinopec-careers",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://job.sinopec.com/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "cmcc-careers",
+      "status": "verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://job.10086.cn/personal/job/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [
+        "招聘类型：校园招聘",
+        "工作地点：北京",
+        "学历：硕士及以上",
+        "岗位类别：医疗信息、数据、网络/产品中有明确医疗或生物医学交集项"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source cmcc-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "keywordRule": "结构化筛选并集超过 150 时才运行工学、理工、技术、数据、生物医学工程和不限专业等广义关键词族",
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "observations": [],
+      "notes": "首页与全部职位列表均可访问；上一轮未完成是动态结果未读完，不是入口失效。",
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source cmcc-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source cmcc-careers",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source cmcc-careers",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮已打开官方页面并确认可呈现公开内容或筛选界面。",
+        "evidence": [
+          {
+            "method": "browser-ui-check",
+            "target": "https://job.10086.cn/personal/job/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "chinatelecom-careers",
+      "status": "verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://job.chinatelecom.com.cn/wt/TELE/web/index/campus",
+      "accessMode": "browser-seeded-public-script",
+      "nativeFilters": [
+        "招聘类型：校园招聘",
+        "工作地点：北京",
+        "学历：硕士及以上",
+        "岗位类别：医疗健康、研发、数据中有明确生物医学交集项",
+        "报名截止：未过期"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "校园招聘 + 工作地点：北京",
+          "人工智能公司/研究院 + 北京",
+          "北京公司 + 全部职位类别"
+        ],
+        "keywordRule": "北京结构化结果超过 150 时再运行广义关键词族并取并集",
+        "completionRule": "以筛选后的页数为准翻到末页，不得用未筛选的 61 页总量作为待处理量"
+      },
+      "observations": [
+        {
+          "segment": "校园招聘未筛选快照",
+          "unfilteredCount": 607,
+          "unfilteredPages": 61
+        }
+      ],
+      "notes": "官网可正常列出具体岗位；上一轮只检查部分单位，应标记 accessible-incomplete 而不是 temporarily-unavailable。",
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-public-structured-list-script",
+        "steps": [
+          "首次接入或站点改版时，仅用浏览器确认公开筛选控件、公开列表请求和分页语义；不逐岗阅读。",
+          "脚本只请求该官方站点公开暴露的列表/详情页面或公开 JSON 请求，先应用原生筛选，再按服务端总页数批量获取。",
+          "以职位代码优先、详情链接其次去重；只把已去重且未过期的候选送入批量复核和官方详情核验。",
+          "遇到登录、验证码、WAF 或未找到稳定公开请求时立即停止脚本抓取，改用浏览器官方公告路径并记录 accessible-incomplete；不绕过访问控制。"
+        ],
+        "nativeFilters": [
+          "招聘类型：校园招聘",
+          "工作地点：北京",
+          "学历：硕士及以上",
+          "岗位类别：医疗健康、研发、数据中有明确生物医学交集项",
+          "报名截止：未过期"
+        ],
+        "pagination": "读取官方响应的总页数/下一页标记；只遍历已应用原生筛选后的结果集。",
+        "deduplicateBy": [
+          "官方职位代码",
+          "官方详情链接",
+          "单位 + 职位名称 + 工作地点"
+        ],
+        "modelBoundary": "模型只复核结构化预筛后的候选；纯计算机/AI/网络安全/软件岗位没有明确生物医学工程交集时写 core-profession-mismatch。",
+        "completion": "已保存原生筛选组合、筛选后总量、分页范围和去重数量；每条拟发布岗位仍需回到官方详情核验。",
+        "fallback": "公开筛选或分页请求不稳定时，改用浏览器查看官方公告/详情；不得退回到未筛选岗位全集。",
+        "implementation": {
+          "command": "node scripts/collect-chinatelecom.mjs --all-pages",
+          "smokeTest": "node scripts/collect-chinatelecom.mjs --max-pages 1",
+          "runtime": "Node.js 18+；仅使用内置 fetch、URL 和 fs，无需浏览器驱动、npm 安装、凭据或本地状态。",
+          "hardGuard": "脚本必须证明官方城市筛选后的总量小于未筛选总量，否则拒绝读取岗位分页。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮已打开官方页面并确认可呈现公开内容或筛选界面。",
+        "evidence": [
+          {
+            "method": "browser-ui-check",
+            "target": "https://job.chinatelecom.com.cn/wt/TELE/web/index/campus",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "casic-careers",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://casic.zhiye.com/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source casic-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "failureSignals": [
+        "final-url-error-path",
+        "official-error-page"
+      ],
+      "observations": [],
+      "notes": "根入口、列表页和已收录的详情链接当前均落到站内 404 页面。HTTP 200 不能视为成功；新入口只能从集团官方公告重新发现后登记。",
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source casic-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source casic-careers",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source casic-careers",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available-via-official-fallback",
+        "summary": "原招聘门户会落入语义 404；国务院国资委移动端已发布航天科工官方校园招聘公告，可作为公告和职位表追踪入口。",
+        "evidence": [
+          {
+            "method": "official-announcement-fallback",
+            "target": "http://wap.sasac.gov.cn/n2588035/n2588325/c35503679/content.html",
+            "outcome": "official SASAC recruitment announcement page",
+            "checkedAt": "2026-08-22T18:59:00+08:00"
+          }
+        ],
+        "nextAction": "从官方公告追踪新项目、附件和投递入口；原门户恢复前不把 404 误写成无岗位，也不绕过访问控制。"
+      }
+    },
+    {
+      "sourceId": "spacechina-careers",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://m.spacechina.com/index.html",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source spacechina-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "fallback": "人才网触发频率或指纹拦截时，转查集团官网和所属院所官方招聘公告；未完成时记为 accessible-incomplete",
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "observations": [],
+      "notes": "集团移动官网正常并明确指向中国航天人才网；人才网存在浏览器指纹与访问频率检测。",
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source spacechina-careers，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source spacechina-careers",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source spacechina-careers",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://m.spacechina.com/index.html",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "chinapost-recruitment",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.chinapost.com.cn/",
+      "accessMode": "script-official-notice-adapter",
+      "nativeFilters": [
+        "集团首页站内检索",
+        "集团公告",
+        "各省分公司和直属单位招聘公告"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source chinapost-recruitment，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "fallback": "年度专题不存在或 DNS 失效时回到集团公告，不复用往年招聘专题",
+        "completionRule": "脚本已读取登记入口、公告列表及可公开访问的详情或附件；若页面结构未解析完整，必须明确记录未完成而不能写成 0 条。"
+      },
+      "observations": [],
+      "notes": "旧招聘栏目当前返回 404，已改用集团首页进行当期公告发现。中国邮政年度校招常使用临时合作招聘专题，必须由当期官方公告确认。",
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "official-announcement-adapter-script",
+        "steps": [
+          "运行 node scripts/collect-official-notice-feed.mjs --source chinapost-recruitment，从登记入口及官方备用入口读取公告列表。",
+          "按该来源页面结构解析招聘公告链接、脚本跳转和官方附件；所有分页或列表项均在脚本中完成。",
+          "公告阶段不按岗位名称或医疗词删减；取得具体岗位后，只用官方专业、学历、届别和其他资格字段判断是否可报。",
+          "任一页面结构未解析完整时记录 accessible-incomplete 并保留上次结果，禁止回退为浏览器逐岗扫描。"
+        ],
+        "completion": "脚本已处理本来源当前公开公告列表、可访问详情与附件，并输出采集数和资格筛选后的数量；未完成部分有明确状态。",
+        "fallback": "公开页面改版或临时不可用时按登记入口重试并保留上次已核验结果；浏览器仅用于人工诊断页面结构，不参与日常全量采集。",
+        "implementation": {
+          "command": "node scripts/collect-official-notice-feed.mjs --source chinapost-recruitment",
+          "smokeTest": "node scripts/collect-official-notice-feed.mjs --source chinapost-recruitment",
+          "runtime": "Node.js 18+；无需登录、浏览器 Cookie 或本地缓存；只访问来源登记中的公开官方域名。",
+          "hardGuard": "禁止把入口可访问冒充完整采集；禁止浏览器逐岗扫描；公告没有具体岗位与官方资格字段时不得发布为岗位。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://www.chinapost.com.cn/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "buaa-career-discovery",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://career.buaa.edu.cn/frontpage/buaa/html/recruitmentinfoList.html?type=1",
+      "accessMode": "public-filterable-list",
+      "nativeFilters": [
+        "地区：北京",
+        "单位性质：国有企业、医疗卫生单位、科研设计单位",
+        "岗位详情：应届硕士可报且具有生物医学工程直接场景或相应工程专业依据",
+        "截止日期：未过期"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "优先查看北京地区，再覆盖全国的当期公告",
+          "用 2027 校招、选调、优培、事业单位、央企国企、生物医学工程、医疗器械等查询词取并集",
+          "打开每条线索的原始发布页并记录其指向的单位或政府官方入口"
+        ],
+        "completionRule": "仅将可回溯到政府或单位官方页面的线索计为可核验候选；北航就业信息网自身不作为正文岗位或公告的发布证据"
+      },
+      "availabilityRule": "公开列表或任一结构化筛选结果可加载时，记录本轮已检查；页面不可用仅影响发现覆盖，不能替代官方来源状态。",
+      "observations": [],
+      "notes": "无需登录即可访问招聘信息列表；云端脚本使用其公开城市和单位性质筛选接口，再读取岗位详情作专业预筛。它只产生待回溯的线索，不能替代单位或政府官方发布证据。",
+      "collection": {
+        "primary": "script",
+        "mode": "script-buaa-public-filtered-discovery",
+        "steps": [
+          "请求北航公开前端配置，取得页面明确暴露的公共令牌；令牌缺失时停止，不猜测或绕过访问控制。",
+          "对本城市按单位性质执行公开原生筛选，读取每个筛选结果的服务端分页，不请求未筛选全集。",
+          "按招聘信息 ID 去重并读取公开详情；只保留仍未截止、适合应届硕士且具有生物医学工程直接场景或工程专业依据的线索。",
+          "将线索回溯到单位或政府官方页面；未回溯前不得作为岗位页或考试公告页的发布证据。"
+        ],
+        "nativeFilters": [
+          "地区：北京",
+          "单位性质：国有企业、医疗卫生单位、科研设计单位",
+          "岗位详情：应届硕士可报且具有生物医学工程直接场景或相应工程专业依据",
+          "截止日期：未过期"
+        ],
+        "pagination": "读取官方响应的总页数/下一页标记；只遍历已应用原生筛选后的结果集。",
+        "deduplicateBy": [
+          "官方职位代码",
+          "官方详情链接",
+          "单位 + 职位名称 + 工作地点"
+        ],
+        "modelBoundary": "模型只复核结构化预筛后的候选；纯计算机/AI/网络安全/软件岗位没有明确生物医学工程交集时写 core-profession-mismatch。",
+        "completion": "已完成公开筛选、筛选后分页、去重和公开详情读取；产出仅为待回溯线索，不能直接发布岗位。",
+        "fallback": "公开接口失效或需要登录、验证码、WAF 时停止采集，记录 accessible-incomplete；不得绕过访问控制或退回未筛选全集。",
+        "implementation": {
+          "command": "node scripts/collect-buaa-discovery.mjs --city 北京",
+          "smokeTest": "node scripts/collect-buaa-discovery.mjs --city 北京",
+          "runtime": "Node.js 18+，仅使用内置 fetch、URL 和 AbortSignal；无需浏览器驱动、凭据或本地状态。",
+          "hardGuard": "每个列表请求都必须包含城市和单位性质；脚本只读取原生筛选结果及其分页，并在详情中再做资格预筛，拒绝未筛选全集。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://career.buaa.edu.cn/frontpage/buaa/html/recruitmentinfoList.html?type=1",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "national-college-employment",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.ncss.cn/",
+      "accessMode": "public-filterable-list",
+      "nativeFilters": [
+        "地点：北京",
+        "学历：硕士",
+        "行业/岗位：医疗健康、医疗器械、生物工程、仪器、电子信息、自动化及工学",
+        "有效状态：未截止"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "首次接入或站点改版时，仅用浏览器确认公开筛选控件、公开列表请求和分页语义；不逐岗阅读。",
+          "脚本只请求该官方站点公开暴露的列表/详情页面或公开 JSON 请求，先应用原生筛选，再按服务端总页数批量获取。",
+          "以职位代码优先、详情链接其次去重；只把已去重且未过期的候选送入批量复核和官方详情核验。",
+          "遇到登录、验证码、WAF 或未找到稳定公开请求时立即停止脚本抓取，改用浏览器官方公告路径并记录 accessible-incomplete；不绕过访问控制。"
+        ],
+        "completionRule": "已保存原生筛选组合、筛选后总量、分页范围和去重数量；每条拟发布岗位仍需回到官方详情核验。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "script-ncss-public-filtered-discovery",
+        "steps": [
+          "调用官方职位页实际使用的无需登录公开列表接口；每个请求都必须携带城市代码和登记的生物医学相关关键词。",
+          "只读取该城市、关键词组合返回的分页，以职位 ID 去重；不能退回未筛选的大型职位全集。",
+          "仅对明确标注为国企、国有企业、中央企业或事业单位，且学历、专业初筛可能相符的记录打开官方公开详情页。",
+          "详情文本排除社招、明确工作年限要求、纯计算机岗位和没有生物医学工程交集的岗位；通过初筛的结果仍是待用户确认线索。"
+        ],
+        "nativeFilters": [
+          "地点：北京（官方地区码）",
+          "关键词：生物医学工程、生物医学、医疗器械、医学影像、临床工程、医疗",
+          "单位性质：只保留平台明确标注的国企、国有企业、中央企业或事业单位",
+          "公开详情：学历、专业、社招/工作年限与生物医学工程交集预筛"
+        ],
+        "pagination": "读取官方响应的总页数/下一页标记；只遍历已应用原生筛选后的结果集。",
+        "deduplicateBy": [
+          "官方职位代码",
+          "官方详情链接",
+          "单位 + 职位名称 + 工作地点"
+        ],
+        "modelBoundary": "模型只复核结构化预筛后的候选；纯计算机/AI/网络安全/软件岗位没有明确生物医学工程交集时写 core-profession-mismatch。",
+        "completion": "已完成公开城市与关键词筛选、筛选分页、职位 ID 去重和可能相符记录的公开详情预筛；结果仅为待用户确认线索。",
+        "fallback": "公开列表或详情需要登录、验证码、WAF 或无法稳定读取时停止采集并记录暂未完成；不得绕过访问控制或退回未筛选全集。",
+        "implementation": {
+          "command": "node scripts/collect-ncss-discovery.mjs --city 北京",
+          "smokeTest": "node scripts/collect-ncss-discovery.mjs --city 北京",
+          "runtime": "Node.js 18+，仅使用内置 fetch、URL 和 AbortSignal；无需浏览器驱动、凭据或本地状态。",
+          "hardGuard": "每个公开列表请求都必须包含本城市地区码和登记关键词；脚本只读取这些筛选结果的分页，并仅打开明确单位性质且初筛可能相符的公开详情。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://www.ncss.cn/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "iguopin-discovery",
+      "status": "route-verified",
+      "observedAt": "2026-08-22",
+      "officialEntryUrl": "https://www.iguopin.com/",
+      "accessMode": "browser-official-page",
+      "nativeFilters": [
+        "地点：北京",
+        "关键词：生物医学工程、生物医学、医疗器械、医学影像、临床工程、医疗",
+        "岗位详情：校招/应届、非博士后、无工作年限要求",
+        "有效状态：未截止"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "脚本调用国聘招聘列表页面实际使用的无需登录公开接口；每个请求均携带本城市层级地区码和登记的生物医学相关关键词。",
+          "按服务端总页数读取已筛选分页，以职位代码去重；随后依据公开岗位正文排除社招、博士后、明确工作年限要求及无生物医学工程交集的岗位。",
+          "通过初筛的线索必须回溯到用人单位或政府官方页面后才能发布。",
+          "公开接口改版、登录、验证码或 WAF 导致无法完成时停止脚本抓取，记录 accessible-incomplete；不绕过访问控制或退回未筛选全集。"
+        ],
+        "completionRule": "已保存原生筛选组合、筛选后总量、分页范围和去重数量；每条拟发布岗位仍需回到官方详情核验。"
+      },
+      "availabilityRule": "入口必须呈现非错误官方页面；可打开但列表、分页或附件未完成时只能记录 accessible-incomplete。",
+      "collection": {
+        "primary": "script",
+        "mode": "script-iguopin-public-filtered-discovery",
+        "steps": [
+          "调用国聘页面公开使用的列表接口；每次请求必须传入本城市的完整层级地区码和登记关键词。",
+          "只遍历服务器返回的对应筛选结果分页，按官方职位代码去重，不遍历未筛选的站内大列表。",
+          "在公开岗位正文中完成应届硕士可报、截止日期、专业关联和纯计算机岗位排除的结构化预筛。",
+          "仅将通过预筛的线索送往单位或政府官方页面回溯；国聘页面本身不作为公开岗位发布证据。"
+        ],
+        "nativeFilters": [
+          "地点：北京（完整层级地区码）",
+          "关键词：生物医学工程、生物医学、医疗器械、医学影像、临床工程、医疗",
+          "岗位正文：校招/应届、非博士后、无工作年限要求",
+          "有效状态：未截止"
+        ],
+        "pagination": "读取官方响应的总页数/下一页标记；只遍历已应用原生筛选后的结果集。",
+        "deduplicateBy": [
+          "官方职位代码",
+          "官方详情链接",
+          "单位 + 职位名称 + 工作地点"
+        ],
+        "modelBoundary": "模型只复核结构化预筛后的候选；纯计算机/AI/网络安全/软件岗位没有明确生物医学工程交集时写 core-profession-mismatch。",
+        "completion": "已完成公开接口的城市关键词筛选、结果计数、筛选后分页、去重和岗位正文预筛；线索回溯前不得发布。",
+        "fallback": "公开接口需要登录、验证码、WAF 或动态控件不可稳定使用时停止采集，按登记浏览器入口重试并记录 accessible-incomplete 或 temporarily-unavailable；不得绕过访问控制或退回未筛选全集。",
+        "implementation": {
+          "command": "node scripts/collect-iguopin-discovery.mjs --city 北京",
+          "smokeTest": "node scripts/collect-iguopin-discovery.mjs --city 北京",
+          "runtime": "Node.js 18+，仅使用内置 fetch、URL 和 AbortSignal；无需浏览器驱动、凭据或本地状态。",
+          "hardGuard": "每个公开列表请求都必须包含本城市完整层级地区码和登记关键词；脚本只读取该筛选结果分页，拒绝未筛选全集。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "本轮官方入口健康检查返回非错误页面；具体采集按本来源配方执行。",
+        "evidence": [
+          {
+            "method": "official-route-health-check",
+            "target": "https://www.iguopin.com/",
+            "outcome": "non-error official page",
+            "checkedAt": "2026-08-22T18:11:00+08:00"
+          }
+        ],
+        "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
+      }
+    },
+    {
+      "sourceId": "jqzp-beijing-soe",
+      "status": "route-verified",
+      "observedAt": "2026-08-24",
+      "officialEntryUrl": "https://jqzp.fesco.com.cn/page?id=27",
+      "accessMode": "public-filterable-list",
+      "nativeFilters": [
+        "工作地点：北京市（站内城市 ID 33）",
+        "工作经验：应届生（站内 ID 1）",
+        "招聘类型：校园招聘（站内 ID 2）",
+        "公司性质：国有企业（站内 ID 5）",
+        "专业与学历：列表官方字段预筛，公开详情二次核验",
+        "有效状态：未下线且截止日期未过"
+      ],
+      "queryPlan": {
+        "everyRun": [
+          "调用京企直聘职位页实际使用的无需登录公开接口，同时传入北京、应届生、校园招聘、国有企业四项站内筛选；禁止请求未筛选职位全集。",
+          "按接口返回总量读取筛选结果全部分页并以岗位 ID 去重；先用列表直接返回的专业、学历和截止日期排除明确不可报记录。",
+          "仅对列表预筛可能可报的记录请求公开详情，核验专业、学历、工作经验、职责、客观风险、投递路径和截止日期。",
+          "不限专业、工学门类或理工类可报的岗位不能因标题没有医学词而删除；纯计算机岗位必须在职责中存在明确生物医学应用场景。"
+        ],
+        "completionRule": "已完成四项站内筛选、筛选后全部分页、岗位 ID 去重、列表资格预筛和候选详情核验，并同时输出原生筛选数、详情核验数和最终保留数。"
+      },
+      "availabilityRule": "公开接口或详情不能完整返回时记录 accessible-incomplete 或 temporarily-unavailable，并保留上次已核验岗位；不得把失败解释为 0 条。",
+      "collection": {
+        "primary": "script",
+        "mode": "script-jqzp-public-filtered-structured-list",
+        "steps": [
+          "请求京企直聘公开职位接口，固定携带北京、应届生、校园招聘、国有企业四项原生筛选。",
+          "只遍历该筛选结果的服务端分页，按公开岗位 ID 去重，不搜索全站 613 条职位，也不只靠医学标题关键词。",
+          "用列表的官方专业、学历和截止日期先缩小详情请求；专业字段缺失时保留并进入详情，不能直接删除。",
+          "读取少量公开岗位详情并完成应届硕士、专业可报、无明确工作年限、非纯计算机、非高危和未截止门禁。",
+          "通过门禁的岗位以北京市国资委主办平台的当前公开记录进入岗位页；记录本轮采集数、详情数、保留数及每类排除原因。"
+        ],
+        "nativeFilters": [
+          "北京市",
+          "应届生",
+          "校园招聘",
+          "国有企业"
+        ],
+        "pagination": "读取接口 count 并按每页 100 条遍历四项原生筛选后的全部分页；结果异常扩大超过 100 页时安全停止，防止筛选参数失效。",
+        "deduplicateBy": [
+          "京企直聘岗位 ID",
+          "公开详情链接",
+          "单位 + 具体岗位 + 地点"
+        ],
+        "modelBoundary": "确定性脚本负责站内筛选、分页、硬资格和明显不匹配排除；模型可复核边界专业或岗位质量，但不能把专业字段本身当作纯计算机岗位具有生物医学场景的证据。",
+        "completion": "已完成公开筛选、全部筛选分页、去重、列表预筛、详情核验和具体岗位输出。",
+        "fallback": "接口限流、断链或服务端错误时使用统一退避重试；触发访问控制时停止请求并保留上次岗位，不绕过验证码或访问控制，不回退到浏览器逐岗扫描。",
+        "implementation": {
+          "command": "node scripts/collect-jqzp-beijing-soe.mjs --city 北京",
+          "smokeTest": "node scripts/collect-jqzp-beijing-soe.mjs --city 北京",
+          "runtime": "Node.js 18+；只使用内置 fetch、URL、Buffer 和 AbortSignal；无需登录、Cookie、浏览器状态或本地缓存，适合云端 Codex。",
+          "hardGuard": "列表请求必须同时包含北京、应届生、校园招聘和国有企业四项筛选；只打开列表资格预筛后可能可报的公开详情，拒绝未筛选全集。"
+        }
+      },
+      "availability": {
+        "state": "available",
+        "summary": "已确认公开职位页、筛选接口、分页字段和岗位详情接口均无需登录即可访问。",
+        "evidence": [
+          {
+            "method": "public-filter-and-detail-api-check",
+            "target": "https://jqzp.fesco.com.cn/position",
+            "outcome": "北京＋应届生＋校园招聘＋国有企业筛选返回结构化职位和总量；公开详情返回任职条件",
+            "checkedAt": "2026-08-24T00:00:00+08:00"
+          }
+        ],
+        "nextAction": "每轮通过统一韧性请求层执行，若接口结构变化则明确记为未完成并保留上次结果。"
+      }
+    }
+  ]
+}

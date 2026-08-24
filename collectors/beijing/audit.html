@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="每次岗位更新的新增、变更、待确认事项，以及没有收录的原因。" />
+    <title>更新记录｜北京求职雷达</title>
+    <link rel="stylesheet" href="styles.css?v=20260822-1820" />
+    <script src="audit.js?v=20260822-1755" defer></script>
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="返回岗位首页"><span class="brand-mark">BJ</span><span><strong>北京求职雷达</strong><small>北京岗位更新</small></span></a>
+        <nav aria-label="主导航"><a href="index.html">岗位</a><a href="monitors.html">考试公告</a><a href="sources.html">信息源</a><a class="nav-current" href="audit.html">更新记录</a><a class="city-switch" href="https://hoco-scy.github.io/city-opportunity-radar/">切换城市</a></nav>
+        <span class="sync-status" id="sync-date"><i></i>正在读取更新时间</span>
+      </header>
+
+      <main class="audit-page subpage">
+        <section class="audit-hero page-intro">
+          <div>
+            <p class="eyebrow">更新记录</p>
+            <h1>这次有什么变化，<br /><em>为什么这样处理</em></h1>
+            <p>每次更新都会记录岗位页有哪些变化、哪些信息还要确认，以及暂时没有收录的原因。需要报名时，可以从岗位卡片回到招聘单位官网。</p>
+          </div>
+          <div class="audit-summary" aria-label="最近一次更新摘要">
+            <div><span>最近更新</span><strong id="latest-run">—</strong></div>
+            <div><span>逐条看过</span><strong id="latest-reviewed">—</strong></div>
+            <div><span>加入岗位页</span><strong id="latest-published">—</strong></div>
+          </div>
+        </section>
+
+        <section class="audit-policy">
+          <div><p class="eyebrow">隐私说明</p><h2>只写处理结果，不写个人条件</h2></div>
+          <p>公开页面不会出现姓名、学校、联系方式、户籍或政治面貌等私人信息。记录里只保留岗位本身的要求，以及“符合、不符合、还要确认”这类结论。</p>
+        </section>
+
+        <section class="audit-method" aria-labelledby="method-title">
+          <div><p class="eyebrow">收录原则</p><h2 id="method-title">只收录条件明确的具体岗位</h2></div>
+          <div class="method-grid">
+            <p><strong>先有具体岗位</strong><span>至少能确认岗位名称或职位代码，才会进入岗位页。</span></p>
+            <p><strong>预告持续关注</strong><span>已经发布但尚未开始报名的公告，会保留在考试公告页。</span></p>
+            <p><strong>条件明确再收录</strong><span>关键信息还不完整时，会标为待确认，不会提前当作可报岗位。</span></p>
+            <p><strong>报名以官网为准</strong><span>岗位情况会变化，报名和投递前请再查看招聘单位官网。</span></p>
+          </div>
+        </section>
+
+        <section class="audit-feed">
+          <div class="section-heading audit-heading">
+            <div><p class="eyebrow">按时间查看</p><h2>每次更新</h2></div>
+            <div class="audit-filters" role="group" aria-label="按处理结果筛选">
+              <button class="active" type="button" data-decision="all">全部</button>
+              <button type="button" data-decision="accepted">已收录</button>
+              <button type="button" data-decision="rejected">不符合</button>
+              <button type="button" data-decision="deferred">还要确认</button>
+            </div>
+          </div>
+          <div id="audit-run-list" class="audit-run-list"><div class="empty-state"><strong>正在读取更新记录</strong><p>稍等一下。</p></div></div>
+        </section>
+      </main>
+
+      <footer><p><strong>北京求职雷达</strong> · 更新记录</p><p>岗位条件会变化，最终以报名时的官方页面为准。</p></footer>
+    </div>
+  </body>
+</html>

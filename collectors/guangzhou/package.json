@@ -1,0 +1,17 @@
+{
+  "name": "guangzhou-opportunity-radar-public",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test:collectors": "node scripts/validate-collector-routes.mjs && node --test tests/professional-eligibility.test.mjs tests/collect-picc-campus.test.mjs tests/enterprise-structured-collectors.test.mjs tests/collect-chinatelecom.test.mjs tests/collect-public-exams.test.mjs tests/public-exam-workflow.test.mjs tests/discovery-collectors.test.mjs tests/official-notice-feed.test.mjs tests/verify-collector-runtime.test.mjs tests/resilient-fetch.test.mjs tests/collection-merge.test.mjs",
+    "collect:public-exams": "node scripts/collect-public-exams.mjs",
+    "sync:public-exams": "node scripts/run-public-exam-sync.mjs --write"
+  },
+  "dependencies": {
+    "adm-zip": "0.5.16",
+    "xlsx": "0.18.5"
+  }
+}

@@ -1,0 +1,58 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install collector dependencies
+        run: npm ci --ignore-scripts
+      - name: Validate verified position data
+        run: node scripts/validate-data.mjs
+      - name: Validate anonymous review log and minute-level freshness
+        run: node scripts/validate-review-log.mjs
+      - name: Validate source coverage and retry policy
+        run: node scripts/validate-source-plan.mjs
+      - name: Validate layered large-dataset screening policy
+        run: node scripts/validate-screening-policy.mjs
+      - name: Test executable public collectors in a clean Node runtime
+        run: npm run test:collectors
+      - name: Check anonymous public content
+        run: node scripts/check-privacy.mjs
+      - name: Check page navigation, favorites, sources, and copy
+        run: node --test tests/site-structure.test.mjs
+
+  deploy:
+    needs: validate
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

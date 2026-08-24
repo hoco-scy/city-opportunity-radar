@@ -2,14 +2,18 @@
 
 北京、上海、广州、深圳的统一求职雷达服务。岗位、信息源、更新记录均由 SQLite 保存并通过同一个网页提供；公开页面不保存候选人的个人资料。
 
+本项目现在是自包含的单仓库。统一服务位于仓库根目录，四座城市的来源配置、采集脚本、公开快照和门禁分别位于 `collectors/beijing`、`collectors/shanghai`、`collectors/guangzhou`、`collectors/shenzhen`。克隆这一个仓库即可构建、更新和部署，不再需要在旁边维护四个同级仓库。
+
 主要入口：
 
 - `npm run sync:all-cities`：统一入口。依次运行四座城市的全量采集、各自的发布门禁，再把成功城市的快照导入 SQLite；某一城市失败不会阻断其余城市。
-- `npm run db:import:legacy`：只把四个既有城市站的公开快照迁入统一数据库，不执行采集。
+- `npm run collectors:install`：安装四座城市采集器的固定依赖。
+- `npm run collectors:test`：验证四座城市的采集器和来源路由。
+- `npm run db:import:collectors`：只把仓库内四城采集快照导入统一数据库，不执行采集。
 - `npm run db:export` / `npm run db:restore`：一致地备份或恢复完整 SQLite 数据库。
 - `npm run data:export` / `npm run data:import`：迁移不含收藏、管理员和更新控制数据的公开数据包。
 - `npm start`：启动本地服务。
-- `docker compose up -d --build`：把统一服务、四城市采集器和 SQLite 持久化卷部署到服务器。
+- `docker compose up -d --build`：从当前单仓库构建统一服务、四城市采集器和 SQLite 持久化卷。
 - `npm test`：导入四座城市并验证统一岗位 API、跨设备收藏、更新计划、事实日志、更新锁与网页资源。
 
 岗位页不再把“已核验岗位”和“平台线索”拆成两个列表。两类信息统一展示，卡片分别标记“官方信息已核验”或“可信来源收录”，用户可自行收藏。管理员只负责更新控制：可以立即运行四城全量更新，也可以在 SQLite 中保存每天多个北京时间的自动更新计划。每次运行的城市、来源、采集量、筛选量、门禁与导入事实会持续写入 SQLite，并在管理员控制台实时显示；网页、定时器和命令行共用一把持久化更新锁。

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "city": "上海",
+  "sourceId": "chinatelecom-careers",
+  "candidateSetHash": "b8c82daabace35c45cf4d1f7b86e201b122d1dedeef3bb7ab5fa7bad5adff650",
+  "reviewMethod": "本轮按官网详情分为两个语义批次，由任务代理阅读职责、专业条件与单位业务后形成；不是关键词分类结果。",
+  "batchDecisions": [
+    {
+      "batch": 1,
+      "candidateCount": 47,
+      "decision": "rejected",
+      "reasonCode": "role-domain-not-aligned",
+      "reason": "岗位核心工作为通信网络、无人系统、水下装备、算法、施工或供应链，不具备已公开的医疗健康或生物医学交叉职责，因此不放入岗位页。",
+      "semanticBasis": "逐项阅读本批官网职责、明确专业和业务场景后判断；水下视觉、机器人或 AI 等技术本身不被当作生物医学交叉依据。"
+    },
+    {
+      "batch": 2,
+      "candidateCount": 46,
+      "decision": "rejected",
+      "reasonCode": "role-domain-not-aligned",
+      "reason": "岗位以云网、软件开发、AI、大数据、通信或财务法务等业务为核心，官网详情未显示与生物医学工程背景相符的职责或专业通道，因此不收录。",
+      "semanticBasis": "根据每项官网职责、任职专业和业务对象综合判断；没有用“算法”“产品”或“计算机”等名称词做机械裁决。"
+    }
+  ],
+  "overrides": []
+}

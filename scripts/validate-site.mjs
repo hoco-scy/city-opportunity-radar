@@ -8,6 +8,8 @@ const server = await readFile(new URL("../server.mjs", import.meta.url), "utf8")
 const dockerfile = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
 const compose = await readFile(new URL("../docker-compose.yml", import.meta.url), "utf8");
 const transfer = await readFile(new URL("./database-transfer.mjs", import.meta.url), "utf8");
+const collectorPackages = await Promise.all(["beijing", "shanghai", "guangzhou", "shenzhen"]
+  .map((city) => readFile(new URL(`../collectors/${city}/package.json`, import.meta.url), "utf8")));
 
 if (!app.includes('api("/api/cities")')) throw new Error("页面没有从统一城市接口读取数据");
 if (!server.includes("recordType: [\"monitor\", \"candidate\", \"job\"].includes(kind) ? kind : \"all\"")) throw new Error("岗位接口没有默认合并证据层级");
@@ -19,7 +21,11 @@ if (!html.includes('id="sync-event-list"') || !app.includes("renderSyncStatus") 
 if (!server.includes("acquireUpdateLock") || !server.includes("alreadyRunning: true")) throw new Error("统一更新没有并发锁");
 if (app.includes("crypto.getRandomValues") || app.includes("function makeCode")) throw new Error("页面仍会自动生成收藏代码");
 if (!html.includes("本站不会自动生成标识符") || !app.includes("请先手动输入用户标识符")) throw new Error("用户标识符没有改为手动输入");
-if (!dockerfile.includes("RADAR_LEGACY_ROOT=/radars") || !compose.includes("radar-data:/data")) throw new Error("Docker 部署没有包含四城采集运行时或持久化数据库");
+if (!dockerfile.includes("RADAR_COLLECTORS_ROOT=/app/collectors") || !dockerfile.includes("COPY --chown=node:node . /app/") || !compose.includes("radar-data:/data")) {
+  throw new Error("Docker 部署没有从单仓库包含四城采集运行时或持久化数据库");
+}
+if (!compose.includes("context: .") || dockerfile.includes("-opportunity-radar-public/ /radars/")) throw new Error("Docker 仍依赖仓库外的城市目录");
+if (collectorPackages.some((content) => !content.includes('"test:collectors"'))) throw new Error("四城采集器没有完整纳入单仓库");
 if (!compose.includes("./backups:/backups") || !transfer.includes("exportDatabaseBackup") || !transfer.includes("restoreDatabaseBackup")) throw new Error("数据库备份与迁移链路不完整");
 if (/review-dialog|candidate-reviews/.test(html)) throw new Error("页面仍包含管理员岗位审核入口");
 if (subpages.some((content) => !content.includes('class="topbar-actions"') || !content.includes('data-admin-trigger') || !content.includes('id="admin-dialog"') || !content.includes('id="sync-event-list"'))) {

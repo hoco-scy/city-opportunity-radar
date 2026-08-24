@@ -4,21 +4,25 @@
 
 ## Docker 部署（推荐）
 
-服务器上先把五个仓库放在同一目录，目录名保持不变：
+服务器只需要克隆一个仓库。四座城市的采集器已经收进 `collectors/`：
 
 ```text
-/srv/radars/
-├── city-opportunity-radar-public/
-├── beijing-opportunity-radar-public/
-├── shanghai-opportunity-radar-public/
-├── guangzhou-opportunity-radar-public/
-└── shenzhen-opportunity-radar-public/
+/srv/menglin-radar/
+├── collectors/
+│   ├── beijing/
+│   ├── shanghai/
+│   ├── guangzhou/
+│   └── shenzhen/
+├── Dockerfile
+├── docker-compose.yml
+└── server.mjs
 ```
 
-进入统一仓库，创建仅保存在服务器上的环境文件并启动：
+克隆统一仓库，创建仅保存在服务器上的环境文件并启动：
 
 ```bash
-cd /srv/radars/city-opportunity-radar-public
+git clone https://github.com/hoco-scy/city-opportunity-radar.git /srv/menglin-radar
+cd /srv/menglin-radar
 cp .env.example .env
 # 编辑 .env，务必替换 RADAR_ADMIN_PASSWORD
 mkdir -p backups
@@ -37,23 +41,24 @@ docker compose ps
 docker compose logs -f radar
 ```
 
-升级代码时更新五个仓库，再执行 `docker compose up -d --build`。不要使用 `docker compose down -v`，其中 `-v` 会删除收藏与更新计划所在的数据卷。部署只应保持一个 `radar` 实例；SQLite 更新锁不适合跨多台服务器共享。
+升级代码时只需在这个仓库执行 `git pull`，再执行 `docker compose up -d --build`。不要使用 `docker compose down -v`，其中 `-v` 会删除收藏与更新计划所在的数据卷。部署只应保持一个 `radar` 实例；SQLite 更新锁不适合跨多台服务器共享。
 
 ## 不使用 Docker 时第一次运行
 
-需要 Node.js 22.13 或更高版本。当前机器的四个旧城市站仍位于同一个 `Code` 目录时，在本仓库运行：
+需要 Node.js 22.13 或更高版本。在本仓库运行：
 
 ```bash
-npm run db:import:legacy
+npm run collectors:install
+npm run db:import:collectors
 RADAR_ADMIN_USERNAME=menglin-admin RADAR_ADMIN_PASSWORD='请设置管理员密码' npm start
 ```
 
-导入命令会读取四个城市站已经通过公开门禁的数据快照，写入本仓库被忽略的 `.data/menglin-opportunity-radar.sqlite`。数据库文件不能提交到公开仓库；它需要和服务一起保存在持久磁盘或挂载卷中。
+导入命令会读取 `collectors/` 内已经通过公开门禁的四城数据快照，写入本仓库被忽略的 `.data/menglin-opportunity-radar.sqlite`。数据库文件不能提交到公开仓库；它需要和服务一起保存在持久磁盘或挂载卷中。
 
-如果旧城市站放在别处，可以显式指定它们共同的父目录：
+测试其他采集器目录时，也可以显式传入一个包含 `beijing`、`shanghai`、`guangzhou`、`shenzhen` 子目录的路径：
 
 ```bash
-npm run db:import:legacy -- --from /path/to/city-radars
+npm run db:import:collectors -- --from /path/to/collectors
 ```
 
 管理员账号只会在空数据库第一次启动时由 `RADAR_ADMIN_USERNAME` 和 `RADAR_ADMIN_PASSWORD` 初始化。数据库只保存经 `scrypt` 派生的密码摘要；初始化成功后，即使继续保留这两个环境变量也不会重置密码。不要把密码写进仓库、日志或公开部署配置。迁移现有 SQLite 数据库到新服务器时，管理员账号会一同保留。密码至少 6 位；若网站经公网访问，应使用至少 16 位的随机强密码。
@@ -67,7 +72,7 @@ npm run db:import:legacy -- --from /path/to/city-radars
 - 把通过城市工作流的官方岗位和可信来源采集结果统一导入 SQLite，并在页面上保留证据状态；
 - 某个来源或城市失败时，继续执行其他城市，并将该失败保留为真实的部分完成状态，绝不等同于“没有岗位”。
 
-登录首页的“管理员”后，也可以点击“立即全量更新”触发相同流程。控制台会实时追加事实日志，包括城市工作流启动、每个来源的实际状态与采集／筛选数量、五项门禁结果以及最终导入数量。日志、运行摘要和错误均保存在 SQLite 中；关闭页面不会中断更新，重新打开管理员控制台会续读最近一轮。部署机器上四个城市仓库需要位于同一个父目录；默认是统一仓库的上一级目录。若路径不同，在服务环境中设置 `RADAR_LEGACY_ROOT=/path/to/city-radars`。
+登录首页的“管理员”后，也可以点击“立即全量更新”触发相同流程。控制台会实时追加事实日志，包括城市工作流启动、每个来源的实际状态与采集／筛选数量、五项门禁结果以及最终导入数量。日志、运行摘要和错误均保存在 SQLite 中；关闭页面不会中断更新，重新打开管理员控制台会续读最近一轮。服务默认直接读取仓库内 `collectors/`；只有自定义镜像布局时才需要设置 `RADAR_COLLECTORS_ROOT=/path/to/collectors`。
 
 管理员还可以在网页中启用自动更新，并填写每天 1–8 个北京时间，例如 `09:00, 14:00`。计划保存在与岗位数据相同的 SQLite 中；Node 服务启动时会自动恢复计时器，触发时调用同一个四城全量更新入口。
 

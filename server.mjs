@@ -98,7 +98,7 @@ function cityExists(db, cityId) {
   return listCities(db).some((city) => city.id === cityId);
 }
 
-function createSyncController({ db, databasePath, legacyRoot, syncRunner }) {
+function createSyncController({ db, databasePath, collectorsRoot, syncRunner }) {
   let active = null;
   let activeRunId = null;
   let heartbeatTimer = null;
@@ -144,7 +144,7 @@ function createSyncController({ db, databasePath, legacyRoot, syncRunner }) {
       heartbeatTimer.unref?.();
       active = Promise.resolve()
         .then(() => syncRunner({
-          legacyRoot,
+          collectorsRoot,
           databasePath,
           onProgress: (event) => appendUpdateEvent(db, runId, event),
         }))
@@ -286,14 +286,14 @@ async function handleStatic(res, pathname) {
 
 export function createRadarServer({
   databasePath = defaultDatabasePath(root),
-  legacyRoot = process.env.RADAR_LEGACY_ROOT ?? resolve(root, ".."),
+  collectorsRoot = process.env.RADAR_COLLECTORS_ROOT ?? resolve(root, "collectors"),
   bootstrapAdmin = { username: process.env.RADAR_ADMIN_USERNAME, password: process.env.RADAR_ADMIN_PASSWORD },
   syncRunner = runAllCitiesSync,
   schedulerEnabled = true,
 } = {}) {
   const db = openRadarDatabase(databasePath);
   ensureBootstrapAdmin(db, bootstrapAdmin);
-  const syncController = createSyncController({ db, databasePath, legacyRoot, syncRunner });
+  const syncController = createSyncController({ db, databasePath, collectorsRoot, syncRunner });
   const scheduleController = createScheduleController({ db, syncController, timersEnabled: schedulerEnabled });
   scheduleController.refresh();
   const server = createServer(async (req, res) => {

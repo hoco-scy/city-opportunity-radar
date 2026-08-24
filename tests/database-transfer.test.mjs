@@ -11,7 +11,7 @@ import {
   openRadarDatabase,
   saveUpdateSchedule,
 } from "../db.mjs";
-import { importLegacyCities } from "../scripts/import-legacy-cities.mjs";
+import { importCityCollectors } from "../scripts/import-city-collectors.mjs";
 import {
   exportDatabaseBackup,
   exportPublicData,
@@ -21,11 +21,11 @@ import {
 } from "../scripts/database-transfer.mjs";
 
 const projectRoot = resolve(new URL("../", import.meta.url).pathname);
-const legacyRoot = resolve(projectRoot, "..");
+const collectorsRoot = resolve(projectRoot, "collectors");
 const userIdentifier = "transfer_test_user";
 
 async function createPopulatedDatabase(filename, adminUsername = "backup-admin") {
-  await importLegacyCities({ legacyRoot, databasePath: filename });
+  await importCityCollectors({ collectorsRoot, databasePath: filename });
   const db = openRadarDatabase(filename);
   const job = db.prepare("SELECT city_id, opportunity_id FROM opportunities ORDER BY city_id, opportunity_id LIMIT 1").get();
   createAdminAccount(db, { username: adminUsername, password: "test-only-password" });
