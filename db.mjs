@@ -417,6 +417,7 @@ const collectionMethodLabels = {
   "script-buaa-public-filtered-discovery": "北航就业信息网公开筛选脚本",
   "script-iguopin-public-filtered-discovery": "国聘公开筛选脚本",
   "script-ncss-public-filtered-discovery": "国家大学生就业服务平台公开筛选脚本",
+  "script-jqzp-public-filtered-structured-list": "京企直聘北京应届国企岗位筛选脚本",
   "browser-platform-native-filter": "平台原生筛选与官方原文回溯",
   "unconfigured-route": "尚未配置自动采集路线",
 };
@@ -468,13 +469,17 @@ export function listOpportunities(db, cityId, { track, q, recordType = "all" } =
 }
 
 export function listSources(db, cityId, view = "shortcut") {
-  const latestRun = db.prepare("SELECT MAX(checked_at) AS checked_at FROM sync_runs WHERE city_id = ?").get(cityId);
+  const latestRun = db.prepare("SELECT run_id, checked_at FROM sync_runs WHERE city_id = ? ORDER BY checked_at DESC LIMIT 1").get(cityId);
   const rows = db.prepare(`
     SELECT s.*, (
       SELECT sc.payload_json FROM source_checks sc
       WHERE sc.city_id = s.city_id AND sc.source_id = s.source_id
       ORDER BY sc.checked_at DESC LIMIT 1
-    ) AS latest_check_json
+    ) AS latest_check_json, (
+      SELECT sc.run_id FROM source_checks sc
+      WHERE sc.city_id = s.city_id AND sc.source_id = s.source_id
+      ORDER BY sc.checked_at DESC LIMIT 1
+    ) AS latest_check_run_id
     FROM sources s WHERE s.city_id = ?
     ORDER BY CASE s.tier WHEN 'critical' THEN 1 WHEN 'high' THEN 2 ELSE 3 END, s.organization ASC
   `).all(cityId);
@@ -485,6 +490,10 @@ export function listSources(db, cityId, view = "shortcut") {
     // leave a stale official shortcut visible after it has been removed from
     // collection, otherwise the two source views communicate different rules.
     if (source.monitoringEnabled === false) return null;
+    // Some low-relevance sources remain available to the collection workflow
+    // as a backstop, but were deliberately removed from the user-facing quick
+    // links. Keep those two roles independent.
+    if (view === "shortcut" && source.shortcutEnabled === false) return null;
     if (view === "collection") {
       const accessMode = source.collectionAccessMode ?? source.accessMode ?? "unconfigured-route";
       return {
@@ -503,8 +512,12 @@ export function listSources(db, cityId, view = "shortcut") {
         shortcutOrganization: source.organization,
         latestCheck: check ? {
           checkedAt: check.checkedAt,
-          isCurrent: check.checkedAt === latestRun?.checked_at,
+          isCurrent: row.latest_check_run_id === latestRun?.run_id,
           collectionMetrics: check.collectionMetrics ?? null,
+        } : source.lastCollectionAudit ? {
+          checkedAt: source.lastCollectionAudit.checkedAt,
+          isCurrent: false,
+          collectionMetrics: source.lastCollectionAudit.collectionMetrics ?? null,
         } : null,
       };
     }

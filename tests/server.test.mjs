@@ -278,6 +278,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.equal(collection.body.sources.find((item) => item.id === "buaa-career-discovery")?.collectionMethod, "北航就业信息网公开筛选脚本");
   assert.equal(collection.body.sources.find((item) => item.id === "iguopin-discovery")?.collectionMethod, "国聘公开筛选脚本");
   assert.equal(collection.body.sources.find((item) => item.id === "national-college-employment")?.collectionMethod, "国家大学生就业服务平台公开筛选脚本");
+  assert.equal(collection.body.sources.find((item) => item.id === "jqzp-beijing-soe")?.collectionMethod, "京企直聘北京应届国企岗位筛选脚本");
   for (const cityId of ["shanghai", "guangzhou", "shenzhen"]) {
     const cityCollection = await request(base, `/api/cities/${cityId}/sources?view=collection`);
     const selection = cityCollection.body.sources.find((item) => item.id === `${cityId}-selection-program`);
