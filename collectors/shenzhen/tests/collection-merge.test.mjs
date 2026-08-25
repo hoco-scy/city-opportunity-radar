@@ -11,6 +11,16 @@ test("发现来源失败时只保留该来源旧候选，成功的来源正常�
   assert.deepEqual(merged.map((item) => item.id), ["new-guopin", "old-buaa"]);
 });
 
+test("聚合来源之间去重，并排除已经由官方采集器核验的同一岗位", () => {
+  const fresh = [
+    { id: "aiball-1", sourceId: "aiball", organization: "某央企", title: "科研岗", priority: 78 },
+    { id: "other-1", sourceId: "other", organization: "某央企", exactTitle: "科研岗", priority: 68 },
+    { id: "keep", sourceId: "other", organization: "某事业单位", title: "项目岗", priority: 64 }
+  ];
+  const verified = [{ organization: "某央企", exactTitle: "科研岗" }];
+  assert.deepEqual(mergeDiscoveryCandidates([], fresh, [], verified).map((item) => item.id), ["keep"]);
+});
+
 test("公告来源未完整完成时保留旧监测项，完成后才替换", () => {
   const previous = [{ id: "old-a", sourceId: "a" }, { id: "old-b", sourceId: "b" }];
   const fresh = [{ id: "new-a", sourceId: "a" }];

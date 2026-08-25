@@ -361,8 +361,8 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   const clientScript = await fetch(`${base}/app.js`);
   assert.equal(clientScript.headers.get("cache-control"), "no-cache");
   const homepage = await (await fetch(`${base}/`)).text();
-  assert.match(homepage, /app\.js\?v=20260824\.6/);
-  assert.match(homepage, /sources\.html\?v=20260824\.6/);
+  assert.match(homepage, /app\.js\?v=20260825\.1/);
+  assert.match(homepage, /sources\.html\?v=20260825\.1/);
   assert.match(homepage, /更新控制台/);
   assert.match(homepage, /本站不会自动生成标识符/);
   assert.doesNotMatch(homepage, /待确认线索|核验并发布岗位/);

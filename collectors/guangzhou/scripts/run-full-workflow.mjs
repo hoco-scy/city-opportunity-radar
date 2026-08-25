@@ -10,6 +10,7 @@ import { buildPublicExamRun } from "./run-public-exam-sync.mjs";
 import { collectBuaaDiscovery } from "./collect-buaa-discovery.mjs";
 import { collectIGuopinDiscovery } from "./collect-iguopin-discovery.mjs";
 import { collectNCSSDiscovery } from "./collect-ncss-discovery.mjs";
+import { collectAiballDiscovery } from "./collect-aiball-discovery.mjs";
 import { collectPiccCampus } from "./collect-picc-campus.mjs";
 import { collectBoeCampus } from "./collect-boe-campus.mjs";
 import { collectCrcCareers } from "./collect-crc-careers.mjs";
@@ -193,6 +194,7 @@ function candidateFromDiscoveryLead(lead, sourceId, checkedAt) {
   const directUrl = lead.employerApplyUrl || null;
   const sourceUrl = lead.officialUrl;
   const hasDirectLink = Boolean(directUrl);
+  const sourceTag = ({ "national-college-employment": "国家大学生就业服务平台筛选", "aiball-discovery": "招录雷达筛选" })[sourceId] || "国聘/北航筛选";
   return {
     id: `candidate-${sourceId}-${lead.id}`,
     track: "待确认线索",
@@ -207,7 +209,7 @@ function candidateFromDiscoveryLead(lead, sourceId, checkedAt) {
     publishedAt: lead.publishedAt,
     deadline: lead.deadline,
     status: "待用户确认",
-    priority: hasDirectLink ? 68 : 64,
+    priority: Number.isFinite(lead.priority) ? lead.priority : hasDirectLink ? 68 : 64,
     matchLevel: "待确认",
     matchReason: "已通过城市、应届硕士、单位性质和公开专业条件的脚本初筛；尚未取得可作为正式发布依据的单位或政府原文。",
     sourceId,
@@ -224,7 +226,7 @@ function candidateFromDiscoveryLead(lead, sourceId, checkedAt) {
       automaticResult: hasDirectLink ? "已保留平台提供的直达链接，不把它自动视为官方核验。" : "平台未返回可验证的单位直达链接，脚本不会猜测或搜索拼接官网。"
     },
     collectionEvidence: lead.evidence,
-    tags: [sourceId === "national-college-employment" ? "国家大学生就业服务平台筛选" : "国聘/北航筛选", lead.employerNature || "平台未注明单位性质", "应届生", "专业条件可报", hasDirectLink ? "平台提供投递链接" : "需手动确认"]
+    tags: [sourceTag, lead.employerNature || "平台未注明单位性质", "应届生", "专业条件可报", hasDirectLink ? "平台提供投递链接" : "需手动确认"]
   };
 }
 
@@ -273,11 +275,12 @@ async function main() {
     maxRetryAfterMs: sourcePlan.requestPolicy?.maxRetryAfterMs || 300_000,
     circuitCooldownMs: sourcePlan.requestPolicy?.circuitCooldownMs || 300_000
   });
-  const [publicExamRun, buaa, iguopin, ncss, picc, boe, crc] = await Promise.all([
+  const [publicExamRun, buaa, iguopin, ncss, aiball, picc, boe, crc] = await Promise.all([
     buildPublicExamRun({ registry, recipes, checkedAt, fetchImpl: collectionFetch }),
     collectBuaaDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("buaa-career-discovery", error)),
     collectIGuopinDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("iguopin-discovery", error)),
     collectNCSSDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("national-college-employment", error)),
+    collectAiballDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("aiball-discovery", error)),
     collectPiccCampus({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("picc-campus", error)),
     collectBoeCampus({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("boe-campus", error)),
     collectCrcCareers({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("crc-careers", error))
@@ -299,6 +302,7 @@ async function main() {
     if (route.collector === "buaa-discovery") return discoverySourceCheck(source, buaa, checkedAt);
     if (route.collector === "iguopin-discovery") return discoverySourceCheck(source, iguopin, checkedAt);
     if (route.collector === "ncss-discovery") return discoverySourceCheck(source, ncss, checkedAt);
+    if (route.collector === "aiball-discovery") return discoverySourceCheck(source, aiball, checkedAt);
     if (route.collector === "picc-campus") return verifiedJobsSourceCheck(source, picc, checkedAt);
     if (route.collector === "boe-campus") return verifiedJobsSourceCheck(source, boe, checkedAt);
     if (route.collector === "crc-careers") return verifiedJobsSourceCheck(source, crc, checkedAt);
@@ -314,7 +318,8 @@ async function main() {
   const discoveryCandidates = [
     ...buaa.leads.map((lead) => candidateFromDiscoveryLead(lead, "buaa-career-discovery", checkedAt)),
     ...iguopin.leads.map((lead) => candidateFromDiscoveryLead(lead, "iguopin-discovery", checkedAt)),
-    ...ncss.leads.map((lead) => candidateFromDiscoveryLead(lead, "national-college-employment", checkedAt))
+    ...ncss.leads.map((lead) => candidateFromDiscoveryLead(lead, "national-college-employment", checkedAt)),
+    ...aiball.leads.map((lead) => candidateFromDiscoveryLead(lead, "aiball-discovery", checkedAt))
   ].sort((left, right) => right.priority - left.priority || left.title.localeCompare(right.title, "zh-CN"));
   const officialNoticeMonitors = [...officialNoticeResults.entries()]
     .flatMap(([sourceId, result]) => (result.noticeItems || []).map((item) => monitorFromOfficialNotice(item, sources.get(sourceId), checkedAt)))
@@ -326,22 +331,22 @@ async function main() {
     coverageStatus: "aggregate-first-collection-and-source-health",
     status: incomplete ? "completed-partial" : "completed",
     outcome: "aggregate-platform-discovery-plus-official-verification",
-    summary: `本轮已执行公考、选调优培、三类聚合平台和重点单位的公开采集。北航就业信息网${buaa.collectionError ? "本轮未完成" : `初筛 ${buaa.leads.length} 条`}，国聘${iguopin.collectionError ? "本轮未完成" : `初筛 ${iguopin.leads.length} 条`}，国家大学生就业服务平台${ncss.collectionError ? "本轮未完成" : `初筛 ${ncss.leads.length} 条`}；重点官网具体岗位：中国人保 ${picc.collectionError ? "未完成" : picc.afterFilter + " 条"}、京东方 ${boe.collectionError ? "未完成" : boe.afterFilter + " 条"}、华润 ${crc.collectionError ? "未完成" : crc.afterFilter + " 条"}；官方公告页保留 ${officialNoticeMonitors.length} 条待拆分公告。`,
+    summary: `本轮已执行公考、选调优培、四类聚合平台和重点单位的公开采集。北航就业信息网${buaa.collectionError ? "本轮未完成" : `初筛 ${buaa.leads.length} 条`}，国聘${iguopin.collectionError ? "本轮未完成" : `初筛 ${iguopin.leads.length} 条`}，国家大学生就业服务平台${ncss.collectionError ? "本轮未完成" : `初筛 ${ncss.leads.length} 条`}，招录雷达${aiball.collectionError ? "本轮未完成" : `初筛 ${aiball.leads.length} 条`}；重点官网具体岗位：中国人保 ${picc.collectionError ? "未完成" : picc.afterFilter + " 条"}、京东方 ${boe.collectionError ? "未完成" : boe.afterFilter + " 条"}、华润 ${crc.collectionError ? "未完成" : crc.afterFilter + " 条"}；官方公告页保留 ${officialNoticeMonitors.length} 条待拆分公告。`,
     metrics: {
       officialSystemsChecked: sourceChecks.length, officialSystemsSucceeded: sourceChecks.length - incomplete, officialSystemsFailed: incomplete,
-      newLeads: (publicExamRun.metrics?.newLeads || 0) + buaa.leads.length + iguopin.leads.length + ncss.leads.length + officialNoticeMonitors.length + [...structuredResults.values()].reduce((sum, result) => sum + (result.jobs?.length || 0), 0),
+      newLeads: (publicExamRun.metrics?.newLeads || 0) + buaa.leads.length + iguopin.leads.length + ncss.leads.length + aiball.leads.length + officialNoticeMonitors.length + [...structuredResults.values()].reduce((sum, result) => sum + (result.jobs?.length || 0), 0),
       reviewedItems: publicExamRun.reviews.length, accepted: 0, rejected: 0, deferred: publicExamRun.reviews.length,
       published: [...structuredResults.values()].reduce((sum, result) => sum + (result.jobs?.length || 0), 0), updated: 0, closed: 0
     },
     screeningMetrics: {
-      portalResultsReported: (publicMetrics.portalResultsReported || 0) + buaa.portalResultsReported + iguopin.portalResultsReported + ncss.portalResultsReported,
-      nativeFilterQueries: (publicMetrics.nativeFilterQueries || 0) + buaa.nativeFilterQueries + iguopin.nativeFilterQueries + ncss.nativeFilterQueries,
-      nativeFilteredResults: (publicMetrics.nativeFilteredResults || 0) + buaa.nativeFilteredResults + iguopin.nativeFilteredResults + ncss.nativeFilteredResults,
-      deduplicatedCandidates: (publicMetrics.deduplicatedCandidates || 0) + buaa.deduplicatedCandidates + iguopin.deduplicatedCandidates + ncss.deduplicatedCandidates,
-      positionsBatchReviewed: (publicMetrics.positionsBatchReviewed || 0) + buaa.detailsChecked + iguopin.detailsChecked + ncss.detailsChecked,
+      portalResultsReported: (publicMetrics.portalResultsReported || 0) + buaa.portalResultsReported + iguopin.portalResultsReported + ncss.portalResultsReported + aiball.portalResultsReported,
+      nativeFilterQueries: (publicMetrics.nativeFilterQueries || 0) + buaa.nativeFilterQueries + iguopin.nativeFilterQueries + ncss.nativeFilterQueries + aiball.nativeFilterQueries,
+      nativeFilteredResults: (publicMetrics.nativeFilteredResults || 0) + buaa.nativeFilteredResults + iguopin.nativeFilteredResults + ncss.nativeFilteredResults + aiball.nativeFilteredResults,
+      deduplicatedCandidates: (publicMetrics.deduplicatedCandidates || 0) + buaa.deduplicatedCandidates + iguopin.deduplicatedCandidates + ncss.deduplicatedCandidates + aiball.deduplicatedCandidates,
+      positionsBatchReviewed: (publicMetrics.positionsBatchReviewed || 0) + buaa.detailsChecked + iguopin.detailsChecked + ncss.detailsChecked + aiball.detailsChecked,
       positionsOfficiallyVerified: (publicMetrics.positionsOfficiallyVerified || 0) + [...structuredResults.values()].reduce((sum, result) => sum + (result.positionsOfficiallyVerified || 0), 0),
       positionsEscalated: 0, positionsDeferredByBudget: publicMetrics.positionsDeferredByBudget || 0,
-      discoverySourcesChecked: 3, discoveryOfficialCandidates: buaa.leads.length + iguopin.leads.length + ncss.leads.length
+      discoverySourcesChecked: 4, discoveryOfficialCandidates: buaa.leads.length + iguopin.leads.length + ncss.leads.length + aiball.leads.length
     },
     networkPolicy: collectionFetch.stats(),
     sourceChecks, reviews: publicExamRun.reviews
@@ -363,7 +368,7 @@ async function main() {
     ? (opportunities.jobs || []).filter((job) => job.sourceId === result.sourceId)
     : result.jobs);
   opportunities.jobs = [...otherJobs, ...refreshedStructuredJobs];
-  opportunities.candidates = mergeDiscoveryCandidates(opportunities.candidates, discoveryCandidates, [buaa, iguopin, ncss]);
+  opportunities.candidates = mergeDiscoveryCandidates(opportunities.candidates, discoveryCandidates, [buaa, iguopin, ncss, aiball], opportunities.jobs);
   opportunities.monitors = mergeOfficialMonitors(opportunities.monitors, officialNoticeMonitors, officialNoticeResults);
   await Promise.all([
     writeFile(new URL("data/review-log.json", root), `${JSON.stringify(log, null, 2)}\n`),

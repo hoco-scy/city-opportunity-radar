@@ -1567,6 +1567,18 @@
         ],
         "nextAction": "下轮仍需先做入口与语义健康检查，不能把本轮结果当作永久可用。"
       }
+    },
+    {
+      "sourceId": "aiball-discovery",
+      "status": "route-verified",
+      "observedAt": "2026-08-25",
+      "officialEntryUrl": "https://www.aiball.online/all",
+      "accessMode": "public-filterable-list",
+      "nativeFilters": ["地区：深圳", "服务端分页：每页 60 条"],
+      "queryPlan": {"everyRun": ["调用公开公告接口并固定传入深圳地区，按总量读取全部分页。", "只保留具体岗位以及央企、地方国企、事业单位和政府机关记录。", "重新读取证据中的学历、专业、时效和官方链接，不直接沿用第三方精选分。"], "completionRule": "已读取深圳地区全部分页并完成具体岗位、单位性质、时效、应届硕士、专业资格和官方链接判断。"},
+      "availabilityRule": "接口或分页结构不完整时记录未完成并保留上次结果，不把失败解释为 0 条。",
+      "collection": {"primary": "script", "mode": "script-aiball-public-filtered-discovery", "steps": ["用深圳地区参数请求公开接口。", "按 total 遍历全部分页并按 ID 去重。", "排除私企和非具体岗位，使用证据字段判断专业资格。", "保留来源详情页与其给出的官方链接。"], "nativeFilters": ["深圳"], "pagination": "每页 60 条；超过 20 页时安全停止并标记部分完成。", "deduplicateBy": ["招录雷达公告 ID", "单位 + 具体岗位 + 地点"], "modelBoundary": "第三方分数不作为本站关注度结论。", "completion": "完成地区筛选、全部分页、去重、硬条件预筛和官方链接保留。", "fallback": "统一限流重试，不绕过访问控制，不改用逐条浏览器扫描。", "implementation": {"command": "node scripts/collect-aiball-discovery.mjs --city 深圳", "smokeTest": "node scripts/collect-aiball-discovery.mjs --city 深圳", "runtime": "Node.js 18+，无需登录、Cookie 或浏览器。", "hardGuard": "每个请求必须包含深圳地区参数，返回记录须再次通过单位性质和具体岗位门禁。"}},
+      "availability": {"state": "available", "summary": "已确认公开地区分页接口无需登录。", "evidence": [{"method": "public-region-api-check", "target": "https://www.aiball.online/api/notices?region=深圳&page=1&pageSize=60", "outcome": "返回结构化结果、总量与分页字段", "checkedAt": "2026-08-25T20:10:00+08:00"}], "nextAction": "每轮记录采集总数、筛选后数量和排除原因。"}
     }
   ]
 }

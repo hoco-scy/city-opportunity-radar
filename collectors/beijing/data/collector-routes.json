@@ -151,6 +151,12 @@
       "recipeSource": "scripts/collect-iguopin-discovery.mjs",
       "eligibilityGate": "official-major-and-education-only",
       "description": "国聘公开筛选采集器"
+    },
+    "aiball-discovery": {
+      "collector": "aiball-discovery",
+      "recipeSource": "scripts/collect-aiball-discovery.mjs",
+      "eligibilityGate": "official-major-and-education-only",
+      "description": "招录雷达公开地区筛选与官方证据预筛采集器"
     }
   }
 }

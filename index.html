@@ -7,13 +7,13 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>岗位｜梦琳求职雷达</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="app.js?v=20260824.6" defer></script>
+    <script src="app.js?v=20260825.1" defer></script>
   </head>
   <body data-page="jobs">
     <header class="topbar">
-      <a class="brand" href="index.html?v=20260824.6" aria-label="梦琳求职雷达岗位页"><span>◎</span><strong>梦琳求职雷达</strong></a>
-      <nav aria-label="主导航"><a class="active" href="index.html?v=20260824.6">岗位</a><a href="announcements.html?v=20260824.6">考试公告</a><a href="sources.html?v=20260824.6">信息源</a><a href="updates.html?v=20260824.6">更新记录</a></nav>
-      <div class="topbar-actions"><button class="admin-trigger" data-admin-trigger type="button">管理员</button><a class="saved-trigger" href="index.html?v=20260824.6&favorites=1">我的收藏 <b id="favorite-count">0</b></a></div>
+      <a class="brand" href="index.html?v=20260825.1" aria-label="梦琳求职雷达岗位页"><span>◎</span><strong>梦琳求职雷达</strong></a>
+      <nav aria-label="主导航"><a class="active" href="index.html?v=20260825.1">岗位</a><a href="announcements.html?v=20260825.1">考试公告</a><a href="sources.html?v=20260825.1">信息源</a><a href="updates.html?v=20260825.1">更新记录</a></nav>
+      <div class="topbar-actions"><button class="admin-trigger" data-admin-trigger type="button">管理员</button><a class="saved-trigger" href="index.html?v=20260825.1&favorites=1">我的收藏 <b id="favorite-count">0</b></a></div>
     </header>
 
     <main id="top" class="shell">
@@ -48,6 +48,11 @@
               <button data-track="我的收藏" type="button">我的收藏</button>
             </div>
             <label class="search-box"><span aria-hidden="true">⌕</span><input id="search" aria-label="搜索岗位、单位或关键词" placeholder="搜索岗位、单位或关键词" /></label>
+          </div>
+          <div class="refine-bar" aria-label="岗位时间、关注度与排序">
+            <label><span>发布时间</span><select id="time-filter"><option value="all">全部时间</option><option value="7d">近 7 天</option><option value="30d">近 30 天</option><option value="90d">近 90 天</option><option value="unknown">时间待补全</option></select></label>
+            <label><span>关注度</span><select id="attention-filter"><option value="all">全部关注度</option><option value="high">高关注 · 70+</option><option value="medium">可关注 · 60–69</option><option value="normal">低关注 · 60 以下</option></select></label>
+            <label><span>排序</span><select id="sort-order"><option value="attention">关注度优先</option><option value="newest">最新发布优先</option><option value="deadline">截止时间临近</option></select></label>
           </div>
           <div class="opportunity-list" id="opportunity-list"><p class="loading">正在读取公开岗位…</p></div>
         </div>

@@ -11,7 +11,8 @@ const SUPPORTED_COLLECTORS = new Set([
   "jqzp-beijing-soe",
   "buaa-discovery",
   "iguopin-discovery",
-  "ncss-discovery"
+  "ncss-discovery",
+  "aiball-discovery"
 ]);
 
 async function readJson(path) {

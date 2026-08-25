@@ -18,6 +18,7 @@ if (!html.includes("梦琳求职雷达")) throw new Error("总站名称未更新
 if (!html.includes('src="assets/yier-bubu-authorized.jpeg"')) throw new Error("缺少已获许可的一二和布布形象");
 if (!html.includes('id="update-schedule-times"') || !server.includes('"/api/admin/schedule"')) throw new Error("管理员更新计划链路不完整");
 if (!html.includes('id="sync-event-list"') || !app.includes("renderSyncStatus") || !server.includes("appendUpdateEvent")) throw new Error("管理员事实日志链路不完整");
+if (!["time-filter", "attention-filter", "sort-order"].every((id) => html.includes(`id="${id}"`)) || !app.includes("opportunityComparator")) throw new Error("岗位时间、关注度筛选与排序链路不完整");
 if (!server.includes("acquireUpdateLock") || !server.includes("alreadyRunning: true")) throw new Error("统一更新没有并发锁");
 if (app.includes("crypto.getRandomValues") || app.includes("function makeCode")) throw new Error("页面仍会自动生成收藏代码");
 if (!html.includes("本站不会自动生成标识符") || !app.includes("请先手动输入用户标识符")) throw new Error("用户标识符没有改为手动输入");

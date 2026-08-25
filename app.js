@@ -5,6 +5,10 @@ const state = {
   cityId: localStorage.getItem("menglin-radar-city") || "beijing",
   track: initialQuery.get("favorites") === "1" ? "我的收藏" : "全部",
   query: "",
+  timeRange: "all",
+  attention: "all",
+  sortBy: "attention",
+  opportunities: [],
   sourceView: "shortcut",
   favorites: new Set(),
   code: localStorage.getItem("menglin-radar-favorite-code") || "",
@@ -83,16 +87,53 @@ function updateLastChecked(city) {
 
 function renderJobs(opportunities) {
   const list = byId("opportunity-list");
+  const now = new Date();
+  const cutoffDays = { "7d": 7, "30d": 30, "90d": 90 }[state.timeRange];
+  const cutoff = cutoffDays ? now.getTime() - cutoffDays * 86_400_000 : null;
   const filtered = opportunities.filter((item) => {
-    if (state.track === "我的收藏") return state.favorites.has(favoriteKey(state.cityId, item.id));
-    return state.track === "全部" || displayTrack(item) === state.track;
-  });
+    const trackMatches = state.track === "我的收藏"
+      ? state.favorites.has(favoriteKey(state.cityId, item.id))
+      : state.track === "全部" || displayTrack(item) === state.track;
+    if (!trackMatches) return false;
+    const published = opportunityDate(item.publishedAt);
+    if (state.timeRange === "unknown" && published !== null) return false;
+    if (cutoff !== null && (published === null || published < cutoff)) return false;
+    const priority = Number(item.priority) || 0;
+    if (state.attention === "high" && priority < 70) return false;
+    if (state.attention === "medium" && (priority < 60 || priority >= 70)) return false;
+    if (state.attention === "normal" && priority >= 60) return false;
+    return true;
+  }).sort(opportunityComparator(state.sortBy));
   const emptyTitle = state.track === "我的收藏" ? "还没有收藏岗位" : "没有符合当前条件的岗位信息";
   const emptyNote = state.track === "我的收藏"
     ? hasUserIdentifier() ? "点击岗位右上角的心形按钮，收藏会同步到当前用户标识符。" : "请先手动输入用户标识符，再同步跨设备收藏。"
     : "换一个赛道或关键词看看。";
   list.innerHTML = filtered.length ? filtered.map(opportunityCard).join("") : `<div class="empty-state"><strong>${emptyTitle}</strong><p>${emptyNote}</p></div>`;
   document.querySelectorAll("[data-save]").forEach((button) => button.addEventListener("click", () => toggleFavorite(button.dataset.save)));
+}
+
+function opportunityDate(value) {
+  if (!value || /待|未注明|以原文为准/.test(String(value))) return null;
+  const match = String(value).match(/(20\d{2})[-年/.](\d{1,2})[-月/.](\d{1,2})/);
+  if (!match) return null;
+  const timestamp = Date.parse(`${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}T00:00:00+08:00`);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function opportunityComparator(sortBy) {
+  return (left, right) => {
+    const priorityDifference = (Number(right.priority) || 0) - (Number(left.priority) || 0);
+    const publishedDifference = (opportunityDate(right.publishedAt) ?? -Infinity) - (opportunityDate(left.publishedAt) ?? -Infinity);
+    const now = Date.now();
+    const leftDeadline = opportunityDate(left.deadline);
+    const rightDeadline = opportunityDate(right.deadline);
+    const leftUpcomingDeadline = leftDeadline !== null && leftDeadline >= now ? leftDeadline : Infinity;
+    const rightUpcomingDeadline = rightDeadline !== null && rightDeadline >= now ? rightDeadline : Infinity;
+    const deadlineDifference = leftUpcomingDeadline - rightUpcomingDeadline;
+    if (sortBy === "newest") return publishedDifference || priorityDifference || String(left.title).localeCompare(String(right.title), "zh-CN");
+    if (sortBy === "deadline") return deadlineDifference || priorityDifference || publishedDifference;
+    return priorityDifference || publishedDifference || String(left.title).localeCompare(String(right.title), "zh-CN");
+  };
 }
 
 function displayTrack(item) {
@@ -118,7 +159,7 @@ function opportunityCard(item) {
   const status = trustedSource && item.status === "待用户确认" ? "来源已收录" : item.status || "以原文为准";
   const checkedPrefix = trustedSource ? "采集" : "核验";
   const primaryLabel = trustedSource ? "查看来源原页 ↗" : "查看官方岗位页 ↗";
-  return `<article class="opportunity-card"><div class="card-accent" data-track="${escapeHtml(track)}"></div><div class="card-content"><div class="card-topline"><span class="track-tag track-${escapeHtml(track)}">${escapeHtml(track)}</span><span class="official-tag ${trustedSource ? "source-evidence-tag" : ""}">${escapeHtml(item.evidenceLabel || "官方信息已核验")}</span><button class="save-button ${saved ? "saved" : ""}" data-save="${escapeHtml(item.id)}" aria-label="${saved ? "取消收藏" : "收藏"} ${escapeHtml(item.exactTitle || item.title)}" type="button">${saved ? "♥" : "♡"}</button></div><div class="card-title-row"><div><h3>${escapeHtml(item.exactTitle || item.title)}</h3><p>${escapeHtml(item.organization)} · ${escapeHtml(item.location || "地点以原文为准")}</p></div><div class="match-score"><strong>${escapeHtml(item.priority ?? "—")}</strong><span>关注度</span></div></div><p class="match-reason">${escapeHtml(reason)}</p><div class="tag-row">${tags}</div><div class="card-footer"><div><span class="status-pill">${escapeHtml(status)}</span><span class="deadline">${escapeHtml(item.deadline || "截止时间以原文为准")}</span><span class="verified-date">${checkedPrefix} ${escapeHtml(item.verifiedAt || "")}</span></div><div>${primaryUrl ? `<a href="${escapeHtml(primaryUrl)}" target="_blank" rel="noreferrer">${primaryLabel}</a>` : ""}${directUrl && directUrl !== primaryUrl ? `<a href="${escapeHtml(directUrl)}" target="_blank" rel="noreferrer">投递链接 ↗</a>` : ""}</div></div></div></article>`;
+  return `<article class="opportunity-card"><div class="card-accent" data-track="${escapeHtml(track)}"></div><div class="card-content"><div class="card-topline"><span class="track-tag track-${escapeHtml(track)}">${escapeHtml(track)}</span><span class="official-tag ${trustedSource ? "source-evidence-tag" : ""}">${escapeHtml(item.evidenceLabel || "官方信息已核验")}</span><button class="save-button ${saved ? "saved" : ""}" data-save="${escapeHtml(item.id)}" aria-label="${saved ? "取消收藏" : "收藏"} ${escapeHtml(item.exactTitle || item.title)}" type="button">${saved ? "♥" : "♡"}</button></div><div class="card-title-row"><div><h3>${escapeHtml(item.exactTitle || item.title)}</h3><p>${escapeHtml(item.organization)} · ${escapeHtml(item.location || "地点以原文为准")}</p></div><div class="match-score"><strong>${escapeHtml(item.priority ?? "—")}</strong><span>关注度</span></div></div><p class="match-reason">${escapeHtml(reason)}</p><div class="tag-row">${tags}</div><div class="card-footer"><div><span class="status-pill">${escapeHtml(status)}</span><span class="published-date">发布 ${escapeHtml(item.publishedAt || "待补全")}</span><span class="deadline">截止 ${escapeHtml(item.deadline || "以原文为准")}</span><span class="verified-date">${checkedPrefix} ${escapeHtml(item.verifiedAt || "")}</span></div><div>${primaryUrl ? `<a href="${escapeHtml(primaryUrl)}" target="_blank" rel="noreferrer">${primaryLabel}</a>` : ""}${directUrl && directUrl !== primaryUrl ? `<a href="${escapeHtml(directUrl)}" target="_blank" rel="noreferrer">投递链接 ↗</a>` : ""}</div></div></div></article>`;
 }
 
 function renderAnnouncements(announcements) {
@@ -164,7 +205,8 @@ async function loadPageData() {
     const parameters = new URLSearchParams();
     if (state.query.trim()) parameters.set("q", state.query.trim());
     const { opportunities } = await api(`/api/cities/${state.cityId}/opportunities?${parameters}`);
-    renderJobs(opportunities);
+    state.opportunities = opportunities;
+    renderJobs(state.opportunities);
     return;
   }
   if (page === "announcements") {
@@ -223,6 +265,12 @@ function setupJobsPage() {
     clearTimeout(timer);
     timer = setTimeout(async () => { state.query = event.target.value; await loadPageData(); }, 220);
   });
+  for (const [id, key] of [["time-filter", "timeRange"], ["attention-filter", "attention"], ["sort-order", "sortBy"]]) {
+    byId(id)?.addEventListener("change", (event) => {
+      state[key] = event.target.value;
+      renderJobs(state.opportunities);
+    });
+  }
 }
 
 function setupSourcesPage() {
