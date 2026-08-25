@@ -24,6 +24,7 @@ if (!html.includes("本站不会自动生成标识符") || !app.includes("请先
 if (!dockerfile.includes("RADAR_COLLECTORS_ROOT=/app/collectors") || !dockerfile.includes("COPY --chown=node:node . /app/") || !compose.includes("radar-data:/data")) {
   throw new Error("Docker 部署没有从单仓库包含四城采集运行时或持久化数据库");
 }
+if (!/apt-get install[^\n]*ca-certificates curl/.test(dockerfile)) throw new Error("Docker 采集运行时缺少官方公告降级请求所需的 curl 与证书包");
 if (!compose.includes("context: .") || dockerfile.includes("-opportunity-radar-public/ /radars/")) throw new Error("Docker 仍依赖仓库外的城市目录");
 if (collectorPackages.some((content) => !content.includes('"test:collectors"'))) throw new Error("四城采集器没有完整纳入单仓库");
 if (!compose.includes("./backups:/backups") || !transfer.includes("exportDatabaseBackup") || !transfer.includes("restoreDatabaseBackup")) throw new Error("数据库备份与迁移链路不完整");

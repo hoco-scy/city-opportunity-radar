@@ -14,7 +14,10 @@ WORKDIR /app
 # collectors are copied from one Docker build context.
 COPY --chown=node:node . /app/
 
-RUN for city in beijing shanghai guangzhou shenzhen; do \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && for city in beijing shanghai guangzhou shenzhen; do \
       cd "/app/collectors/${city}" && npm ci --omit=dev --ignore-scripts; \
     done \
     && mkdir -p /data /backups \
