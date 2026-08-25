@@ -1658,37 +1658,6 @@
         ],
         "nextAction": "每轮通过统一韧性请求层执行，若接口结构变化则明确记为未完成并保留上次结果。"
       }
-    },
-    {
-      "sourceId": "aiball-discovery",
-      "status": "route-verified",
-      "observedAt": "2026-08-25",
-      "officialEntryUrl": "https://www.aiball.online/all",
-      "accessMode": "public-filterable-list",
-      "nativeFilters": ["地区参数：北京", "记录字段：仅具体岗位", "单位性质字段：中央企业／地方国企／事业单位／政府机关"],
-      "queryPlan": {
-        "everyRun": [
-          "调用公开公告接口并固定传入北京地区；读取返回总量后遍历该地区全部分页，不重复抓取其他城市。",
-          "只保留 recordRole=position 的具体岗位以及 central_soe、local_soe、institution、government 四类单位，私企和只有公告没有岗位字段的记录不进入候选池。",
-          "重新读取公开证据中的学历、专业、招聘类型、报名状态和官方链接；不直接沿用第三方精选分。",
-          "已截止、实习、博士限定、专业不可报和无生物医学交叉场景的纯计算机岗位在本站预筛阶段排除。"
-        ],
-        "completionRule": "已读取北京地区筛选结果全部分页，并对每条记录完成具体岗位、单位性质、时效、应届硕士、专业资格和官方链接判断。"
-      },
-      "availabilityRule": "公开接口、分页字段或 items 结构不能完整返回时记录 accessible-incomplete 或 temporarily-unavailable，并保留上次结果；不得把失败解释为 0 条。",
-      "collection": {
-        "primary": "script",
-        "mode": "script-aiball-public-filtered-discovery",
-        "steps": ["使用公开地区参数请求北京结果。", "按 total 和 pageSize 读取全部分页并按公告 ID 去重。", "排除私企和非具体岗位，再使用证据字段执行专业资格判断。", "保留第三方详情页作为发现证据，同时把其公开提供的单位或政府官方链接单独展示。"],
-        "nativeFilters": ["地区参数：北京", "记录字段：recordRole=position", "单位性质字段：central_soe／local_soe／institution／government"],
-        "pagination": "每页 60 条，依据 total 计算页数；超过 20 页时安全停止并标记部分完成。",
-        "deduplicateBy": ["招录雷达公告 ID", "单位 + 具体岗位 + 地点"],
-        "modelBoundary": "脚本负责确定性地区、单位性质、记录类型、时效和专业资格预筛；第三方分数只作来源字段，不作为本站关注度结论。",
-        "completion": "已完成地区筛选、全部分页、去重、硬条件预筛和官方链接保留。",
-        "fallback": "接口失败时由统一韧性请求层限流重试；不绕过验证码或访问控制，不回退为逐条浏览器扫描。",
-        "implementation": {"command": "node scripts/collect-aiball-discovery.mjs --city 北京", "smokeTest": "node scripts/collect-aiball-discovery.mjs --city 北京", "runtime": "Node.js 18+，仅使用公开 JSON 接口、内置 fetch、URL 和 AbortSignal；无需登录、Cookie、浏览器或本地状态。", "hardGuard": "每个请求必须包含北京地区参数；返回记录必须再次通过单位性质和具体岗位门禁。"}
-      },
-      "availability": {"state": "available", "summary": "已确认列表页和公开地区分页接口无需登录，并能返回具体岗位、单位性质、证据字段和官方链接。", "evidence": [{"method": "public-region-api-check", "target": "https://www.aiball.online/api/notices?region=北京&page=1&pageSize=60", "outcome": "北京筛选返回结构化结果、总量和分页；真实采集命中用户提供的人保资本投资岗", "checkedAt": "2026-08-25T20:10:00+08:00"}], "nextAction": "每轮运行后记录采集总数、筛选后数量和排除原因。"}
     }
   ]
 }

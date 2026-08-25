@@ -41,9 +41,9 @@
     "activeUntilDeadline": true,
     "activeDefinition": ["正文已有在招岗位","截止未过的正式公告或预公告","上轮 deferred 的待补字段对象"],
     "everyRunOfficial": ["national-civil","shenzhen-civil","shenzhen-personnel-exam","shenzhen-selection-program","shenzhen-institutions","central-institutions","china-public-recruitment","central-sasac-recruitment","central-enterprise-roster","shenzhen-state-assets","picc-campus","boe-campus","sinopharm-careers","genertec-official","crc-careers","casic-careers","spacechina-careers"],
-    "everyRunDiscovery": ["buaa-career-discovery","national-college-employment","iguopin-discovery","aiball-discovery"],
+    "everyRunDiscovery": ["buaa-career-discovery","national-college-employment","iguopin-discovery"],
     "maxUnseenHours": 24,
-    "dynamicExpansion": "以北航就业信息网、国聘和招录雷达的已筛选结果作为主发现池；重点补充医疗健康、生物医药、医疗器械、保险健康以及航空航天院所中明确生物医学工程交叉的官网岗位，不恢复对通信、能源等低相关大型央企的逐家轮询"
+    "dynamicExpansion": "以北航就业信息网、国聘和国家大学生就业服务平台的已筛选结果作为主发现池；重点补充医疗健康、生物医药、医疗器械、保险健康以及航空航天院所中明确生物医学工程交叉的官网岗位，不恢复对通信、能源等低相关大型央企的逐家轮询"
   },
   "discoveryChannels": ["北航就业信息网（主采集）","国聘（主采集）","国家大学生就业服务平台","重点医疗健康单位官网","搜索引擎","高校就业网","官方微信公众号或招聘账号","主流招聘平台","公开社交与社区线索"],
   "queryFamilies": ["2027 校园招聘 深圳 提前批 预公告 招聘公告","生物医学工程 0831 083100 082601","工学 理工类 电子信息 仪器 自动化 计算机 数据 人工智能 图像 信号 医疗器械 生物工程 生医工","不限专业 专业不限 所有专业 相关专业 交叉学科","国考 粤考 选调 优培 职位表 公告"],

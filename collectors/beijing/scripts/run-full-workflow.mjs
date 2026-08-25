@@ -10,7 +10,6 @@ import { buildPublicExamRun } from "./run-public-exam-sync.mjs";
 import { collectBuaaDiscovery } from "./collect-buaa-discovery.mjs";
 import { collectIGuopinDiscovery } from "./collect-iguopin-discovery.mjs";
 import { collectNCSSDiscovery } from "./collect-ncss-discovery.mjs";
-import { collectAiballDiscovery } from "./collect-aiball-discovery.mjs";
 import { collectPiccCampus } from "./collect-picc-campus.mjs";
 import { collectBoeCampus } from "./collect-boe-campus.mjs";
 import { collectCrcCareers } from "./collect-crc-careers.mjs";
@@ -195,7 +194,7 @@ function candidateFromDiscoveryLead(lead, sourceId, checkedAt) {
   const directUrl = lead.employerApplyUrl || null;
   const sourceUrl = lead.officialUrl;
   const hasDirectLink = Boolean(directUrl);
-  const sourceTag = ({ "national-college-employment": "国家大学生就业服务平台筛选", "aiball-discovery": "招录雷达筛选" })[sourceId] || "国聘/北航筛选";
+  const sourceTag = ({ "national-college-employment": "国家大学生就业服务平台筛选" })[sourceId] || "国聘/北航筛选";
   return {
     id: `candidate-${sourceId}-${lead.id}`,
     track: "待确认线索",
@@ -276,12 +275,11 @@ async function main() {
     maxRetryAfterMs: sourcePlan.requestPolicy?.maxRetryAfterMs || 300_000,
     circuitCooldownMs: sourcePlan.requestPolicy?.circuitCooldownMs || 300_000
   });
-  const [publicExamRun, buaa, iguopin, ncss, aiball, jqzp, picc, boe, crc] = await Promise.all([
+  const [publicExamRun, buaa, iguopin, ncss, jqzp, picc, boe, crc] = await Promise.all([
     buildPublicExamRun({ registry, recipes, checkedAt, fetchImpl: collectionFetch }),
     collectBuaaDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("buaa-career-discovery", error)),
     collectIGuopinDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("iguopin-discovery", error)),
     collectNCSSDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("national-college-employment", error)),
-    collectAiballDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("aiball-discovery", error)),
     collectJqzpBeijingSoe({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("jqzp-beijing-soe", error)),
     collectPiccCampus({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("picc-campus", error)),
     collectBoeCampus({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("boe-campus", error)),
@@ -304,7 +302,6 @@ async function main() {
     if (route.collector === "buaa-discovery") return discoverySourceCheck(source, buaa, checkedAt);
     if (route.collector === "iguopin-discovery") return discoverySourceCheck(source, iguopin, checkedAt);
     if (route.collector === "ncss-discovery") return discoverySourceCheck(source, ncss, checkedAt);
-    if (route.collector === "aiball-discovery") return discoverySourceCheck(source, aiball, checkedAt);
     if (route.collector === "jqzp-beijing-soe") return verifiedJobsSourceCheck(source, jqzp, checkedAt);
     if (route.collector === "picc-campus") return verifiedJobsSourceCheck(source, picc, checkedAt);
     if (route.collector === "boe-campus") return verifiedJobsSourceCheck(source, boe, checkedAt);
@@ -321,8 +318,7 @@ async function main() {
   const discoveryCandidates = [
     ...buaa.leads.map((lead) => candidateFromDiscoveryLead(lead, "buaa-career-discovery", checkedAt)),
     ...iguopin.leads.map((lead) => candidateFromDiscoveryLead(lead, "iguopin-discovery", checkedAt)),
-    ...ncss.leads.map((lead) => candidateFromDiscoveryLead(lead, "national-college-employment", checkedAt)),
-    ...aiball.leads.map((lead) => candidateFromDiscoveryLead(lead, "aiball-discovery", checkedAt))
+    ...ncss.leads.map((lead) => candidateFromDiscoveryLead(lead, "national-college-employment", checkedAt))
   ].sort((left, right) => right.priority - left.priority || left.title.localeCompare(right.title, "zh-CN"));
   const officialNoticeMonitors = [...officialNoticeResults.entries()]
     .flatMap(([sourceId, result]) => (result.noticeItems || []).map((item) => monitorFromOfficialNotice(item, sources.get(sourceId), checkedAt)))
@@ -336,22 +332,22 @@ async function main() {
     coverageStatus: "aggregate-first-collection-and-source-health",
     status: incomplete ? "completed-partial" : "completed",
     outcome: "aggregate-platform-discovery-plus-official-verification",
-    summary: `本轮已执行公考、选调优培、聚合平台和重点单位的公开采集。京企直聘${jqzp.collectionError ? "本轮未完成" : `核验后保留 ${jqzp.afterFilter} 条`}，北航就业信息网${buaa.collectionError ? "本轮未完成" : `初筛 ${buaa.leads.length} 条`}，国聘${iguopin.collectionError ? "本轮未完成" : `初筛 ${iguopin.leads.length} 条`}，国家大学生就业服务平台${ncss.collectionError ? "本轮未完成" : `初筛 ${ncss.leads.length} 条`}，招录雷达${aiball.collectionError ? "本轮未完成" : `初筛 ${aiball.leads.length} 条`}；重点官网具体岗位：中国人保 ${picc.collectionError ? "未完成" : picc.afterFilter + " 条"}、京东方 ${boe.collectionError ? "未完成" : boe.afterFilter + " 条"}、华润 ${crc.collectionError ? "未完成" : crc.afterFilter + " 条"}；官方公告页保留 ${officialNoticeMonitors.length} 条待拆分公告。`,
+    summary: `本轮已执行公考、选调优培、聚合平台和重点单位的公开采集。京企直聘${jqzp.collectionError ? "本轮未完成" : `核验后保留 ${jqzp.afterFilter} 条`}，北航就业信息网${buaa.collectionError ? "本轮未完成" : `初筛 ${buaa.leads.length} 条`}，国聘${iguopin.collectionError ? "本轮未完成" : `初筛 ${iguopin.leads.length} 条`}，国家大学生就业服务平台${ncss.collectionError ? "本轮未完成" : `初筛 ${ncss.leads.length} 条`}；重点官网具体岗位：中国人保 ${picc.collectionError ? "未完成" : picc.afterFilter + " 条"}、京东方 ${boe.collectionError ? "未完成" : boe.afterFilter + " 条"}、华润 ${crc.collectionError ? "未完成" : crc.afterFilter + " 条"}；官方公告页保留 ${officialNoticeMonitors.length} 条待拆分公告。`,
     metrics: {
       officialSystemsChecked: sourceChecks.length, officialSystemsSucceeded: sourceChecks.length - incomplete, officialSystemsFailed: incomplete,
-      newLeads: (publicExamRun.metrics?.newLeads || 0) + buaa.leads.length + iguopin.leads.length + ncss.leads.length + aiball.leads.length + officialNoticeMonitors.length + [...structuredResults.values()].reduce((sum, result) => sum + (result.jobs?.length || 0), 0),
+      newLeads: (publicExamRun.metrics?.newLeads || 0) + buaa.leads.length + iguopin.leads.length + ncss.leads.length + officialNoticeMonitors.length + [...structuredResults.values()].reduce((sum, result) => sum + (result.jobs?.length || 0), 0),
       reviewedItems: publicExamRun.reviews.length, accepted: 0, rejected: 0, deferred: publicExamRun.reviews.length,
       published: structuredValues.reduce((sum, result) => sum + (result.jobs?.length || 0), 0), updated: 0, closed: 0
     },
     screeningMetrics: {
-      portalResultsReported: (publicMetrics.portalResultsReported || 0) + buaa.portalResultsReported + iguopin.portalResultsReported + ncss.portalResultsReported + aiball.portalResultsReported + structuredMetric("portalResultsReported"),
-      nativeFilterQueries: (publicMetrics.nativeFilterQueries || 0) + buaa.nativeFilterQueries + iguopin.nativeFilterQueries + ncss.nativeFilterQueries + aiball.nativeFilterQueries + structuredMetric("nativeFilterQueries"),
-      nativeFilteredResults: (publicMetrics.nativeFilteredResults || 0) + buaa.nativeFilteredResults + iguopin.nativeFilteredResults + ncss.nativeFilteredResults + aiball.nativeFilteredResults + structuredMetric("nativeFilteredResults"),
-      deduplicatedCandidates: (publicMetrics.deduplicatedCandidates || 0) + buaa.deduplicatedCandidates + iguopin.deduplicatedCandidates + ncss.deduplicatedCandidates + aiball.deduplicatedCandidates + structuredMetric("deduplicatedCandidates"),
-      positionsBatchReviewed: (publicMetrics.positionsBatchReviewed || 0) + buaa.detailsChecked + iguopin.detailsChecked + ncss.detailsChecked + aiball.detailsChecked + structuredMetric("detailsChecked"),
+      portalResultsReported: (publicMetrics.portalResultsReported || 0) + buaa.portalResultsReported + iguopin.portalResultsReported + ncss.portalResultsReported + structuredMetric("portalResultsReported"),
+      nativeFilterQueries: (publicMetrics.nativeFilterQueries || 0) + buaa.nativeFilterQueries + iguopin.nativeFilterQueries + ncss.nativeFilterQueries + structuredMetric("nativeFilterQueries"),
+      nativeFilteredResults: (publicMetrics.nativeFilteredResults || 0) + buaa.nativeFilteredResults + iguopin.nativeFilteredResults + ncss.nativeFilteredResults + structuredMetric("nativeFilteredResults"),
+      deduplicatedCandidates: (publicMetrics.deduplicatedCandidates || 0) + buaa.deduplicatedCandidates + iguopin.deduplicatedCandidates + ncss.deduplicatedCandidates + structuredMetric("deduplicatedCandidates"),
+      positionsBatchReviewed: (publicMetrics.positionsBatchReviewed || 0) + buaa.detailsChecked + iguopin.detailsChecked + ncss.detailsChecked + structuredMetric("detailsChecked"),
       positionsOfficiallyVerified: (publicMetrics.positionsOfficiallyVerified || 0) + structuredMetric("positionsOfficiallyVerified"),
       positionsEscalated: 0, positionsDeferredByBudget: publicMetrics.positionsDeferredByBudget || 0,
-      discoverySourcesChecked: 4, discoveryOfficialCandidates: buaa.leads.length + iguopin.leads.length + ncss.leads.length + aiball.leads.length
+      discoverySourcesChecked: 3, discoveryOfficialCandidates: buaa.leads.length + iguopin.leads.length + ncss.leads.length
     },
     networkPolicy: collectionFetch.stats(),
     sourceChecks, reviews: publicExamRun.reviews
@@ -373,7 +369,7 @@ async function main() {
     ? (opportunities.jobs || []).filter((job) => job.sourceId === result.sourceId)
     : result.jobs);
   opportunities.jobs = [...otherJobs, ...refreshedStructuredJobs];
-  opportunities.candidates = mergeDiscoveryCandidates(opportunities.candidates, discoveryCandidates, [buaa, iguopin, ncss, aiball], opportunities.jobs);
+  opportunities.candidates = mergeDiscoveryCandidates(opportunities.candidates, discoveryCandidates, [buaa, iguopin, ncss], opportunities.jobs);
   opportunities.monitors = mergeOfficialMonitors(opportunities.monitors, officialNoticeMonitors, officialNoticeResults);
   await Promise.all([
     writeFile(new URL("data/review-log.json", root), `${JSON.stringify(log, null, 2)}\n`),

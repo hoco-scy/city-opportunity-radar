@@ -13,7 +13,7 @@ test("发现来源失败时只保留该来源旧候选，成功的来源正常�
 
 test("聚合来源之间去重，并排除已经由官方采集器核验的同一岗位", () => {
   const fresh = [
-    { id: "aiball-1", sourceId: "aiball", organization: "某央企", title: "科研岗", priority: 78 },
+    { id: "discovery-a-1", sourceId: "discovery-a", organization: "某央企", title: "科研岗", priority: 78 },
     { id: "other-1", sourceId: "other", organization: "某央企", exactTitle: "科研岗", priority: 68 },
     { id: "keep", sourceId: "other", organization: "某事业单位", title: "项目岗", priority: 64 }
   ];

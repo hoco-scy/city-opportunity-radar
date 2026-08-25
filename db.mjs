@@ -480,7 +480,6 @@ const collectionMethodLabels = {
   "script-buaa-public-filtered-discovery": "北航就业信息网公开筛选脚本",
   "script-iguopin-public-filtered-discovery": "国聘公开筛选脚本",
   "script-ncss-public-filtered-discovery": "国家大学生就业服务平台公开筛选脚本",
-  "script-aiball-public-filtered-discovery": "招录雷达公开地区筛选脚本",
   "script-jqzp-public-filtered-structured-list": "京企直聘北京应届国企岗位筛选脚本",
   "browser-platform-native-filter": "平台原生筛选与官方原文回溯",
   "unconfigured-route": "尚未配置自动采集路线",

@@ -681,23 +681,6 @@
       "collectionAccessMode": "script-iguopin-public-filtered-discovery",
       "collectionNote": "主采集入口：脚本按城市和生物医学相关关键词读取国聘公开筛选结果，并只保留明确标注为国企、国有企业、中央企业或事业单位的记录；没有官方原文的结果会保留为待用户确认线索，不会混入已核验岗位。",
       "officialSiteConfirmed": false
-    },
-    {
-      "id": "aiball-discovery",
-      "organization": "招录雷达",
-      "type": "结构化招聘信息平台",
-      "role": "discovery",
-      "tier": "priority",
-      "cadence": "every-run",
-      "coverage": ["事业单位", "国有企业", "发现线索"],
-      "domains": ["aiball.online"],
-      "entryUrl": "https://www.aiball.online/all",
-      "collectionEntryUrl": "https://www.aiball.online/api/notices",
-      "shortcutEnabled": false,
-      "collectionAccessMode": "script-aiball-public-filtered-discovery",
-      "collectionNote": "主采集入口：脚本使用公开地区筛选 API 读取当前城市全部分页，再只保留国企、事业单位和政府机关的具体岗位，并使用页面给出的官方证据重新判断应届硕士与专业是否可报；第三方评分不直接沿用。",
-      "officialSiteConfirmed": false,
-      "lastCollectionAudit": {"checkedAt": "2026-08-25T20:10:00+08:00", "collectionMetrics": {"state": "completed", "collected": 671, "afterFilter": 1, "filterDescription": "按北京地区筛选读取 12 页共 671 条；排除 649 条非具体岗位、10 条私企和 11 条专业条件不匹配记录，留下 1 条专业可报的央企具体岗位。"}}
     }
   ]
 }
