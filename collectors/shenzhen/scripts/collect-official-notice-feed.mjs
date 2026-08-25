@@ -82,7 +82,31 @@ async function curlPage(requestedUrl, headers = {}) {
   return { ok: Number(status) >= 200 && Number(status) < 400, status: Number(status), url: finalUrl || requestedUrl, viaCurl: true, text: async () => stdout.slice(0, index) };
 }
 
+export async function retryTlsCompatibleCurl(requestedUrl, headers = {}, {
+  curlImpl = curlPage,
+  maxAttempts = 3,
+  sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay)),
+  backoffMs = [0, 1_500, 5_000]
+} = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (attempt > 1) await sleep(Number(backoffMs[Math.min(attempt - 1, backoffMs.length - 1)] || 0));
+    try {
+      const response = await curlImpl(requestedUrl, headers);
+      response.collectionAttempts = attempt;
+      return response;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  lastError.attempts = maxAttempts;
+  throw lastError;
+}
+
 async function requestPage(requestedUrl, fetchImpl, headers = {}) {
+  if (curlTlsCompatibilityArgs(requestedUrl).length) {
+    return retryTlsCompatibleCurl(requestedUrl, headers);
+  }
   try {
     return await fetchImpl(requestedUrl, {
       redirect: "follow",

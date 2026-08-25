@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { collectOfficialNoticeFeed, createOfficialNoticeFeedCollector, curlTlsCompatibilityArgs } from "../scripts/collect-official-notice-feed.mjs";
+import { collectOfficialNoticeFeed, createOfficialNoticeFeedCollector, curlTlsCompatibilityArgs, retryTlsCompatibleCurl } from "../scripts/collect-official-notice-feed.mjs";
 import { createCollectionFetch } from "../scripts/resilient-fetch.mjs";
 
 function response({ url, html, ok = true, status = 200 }) {
@@ -15,6 +15,22 @@ const source = {
 test("仅深圳人社局入口使用已验证的 Linux TLS 兼容参数", () => {
   assert.deepEqual(curlTlsCompatibilityArgs("https://hrss.sz.gov.cn/gzryzk/index.html"), ["--tlsv1.2", "--tls-max", "1.2", "--curves", "P-256"]);
   assert.deepEqual(curlTlsCompatibilityArgs("https://jobs.example.gov.cn/recruitment.html"), []);
+});
+
+test("深圳 TLS 兼容传输失败时独立重试三次并记录真实次数", async () => {
+  let calls = 0;
+  const sleeps = [];
+  const result = await retryTlsCompatibleCurl("https://hrss.sz.gov.cn/gzryzk/index.html", {}, {
+    curlImpl: async (url) => {
+      calls += 1;
+      if (calls < 3) throw new Error("temporary TLS failure");
+      return response({ url, html: "<div>公开招聘公告</div>" });
+    },
+    sleep: async (delay) => { sleeps.push(delay); }
+  });
+  assert.equal(calls, 3);
+  assert.equal(result.collectionAttempts, 3);
+  assert.deepEqual(sleeps, [1_500, 5_000]);
 });
 
 test("官方公告采集器读取同域招聘链接和公告正文，而非只探测首页", async () => {
