@@ -1665,7 +1665,7 @@
       "observedAt": "2026-08-25",
       "officialEntryUrl": "https://www.aiball.online/all",
       "accessMode": "public-filterable-list",
-      "nativeFilters": ["地区：北京", "服务端分页：每页 60 条"],
+      "nativeFilters": ["地区参数：北京", "记录字段：仅具体岗位", "单位性质字段：中央企业／地方国企／事业单位／政府机关"],
       "queryPlan": {
         "everyRun": [
           "调用公开公告接口并固定传入北京地区；读取返回总量后遍历该地区全部分页，不重复抓取其他城市。",
@@ -1680,7 +1680,7 @@
         "primary": "script",
         "mode": "script-aiball-public-filtered-discovery",
         "steps": ["使用公开地区参数请求北京结果。", "按 total 和 pageSize 读取全部分页并按公告 ID 去重。", "排除私企和非具体岗位，再使用证据字段执行专业资格判断。", "保留第三方详情页作为发现证据，同时把其公开提供的单位或政府官方链接单独展示。"],
-        "nativeFilters": ["北京"],
+        "nativeFilters": ["地区参数：北京", "记录字段：recordRole=position", "单位性质字段：central_soe／local_soe／institution／government"],
         "pagination": "每页 60 条，依据 total 计算页数；超过 20 页时安全停止并标记部分完成。",
         "deduplicateBy": ["招录雷达公告 ID", "单位 + 具体岗位 + 地点"],
         "modelBoundary": "脚本负责确定性地区、单位性质、记录类型、时效和专业资格预筛；第三方分数只作来源字段，不作为本站关注度结论。",
