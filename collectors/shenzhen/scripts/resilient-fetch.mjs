@@ -83,13 +83,26 @@ export function createCollectionFetch({
     return release;
   }
 
-  function openCircuit(state, host, kind) {
+  function openCircuit(state, host, kind, attempts = 0) {
     state.openUntil = Date.now() + circuitCooldownMs;
     state.reason = kind;
     counters.circuitsOpened += 1;
     return new CollectionTransportError(`${host} 已触发${kind === "blocked" ? "反爬/访问控制" : "连续瞬时故障"}，本轮停止继续请求该域名。`, {
-      kind: "circuit-open", host, retryAt: new Date(state.openUntil).toISOString(), circuitReason: kind
+      kind: "circuit-open", host, attempts, retryAt: new Date(state.openUntil).toISOString(), circuitReason: kind
     });
+  }
+
+  function recordAttempts(response, attempts) {
+    try {
+      Object.defineProperty(response, "collectionAttempts", {
+        value: attempts,
+        configurable: true
+      });
+    } catch {
+      // Some fetch implementations return non-extensible Response objects.
+      // The request still succeeds; callers will conservatively count one.
+    }
+    return response;
   }
 
   async function collectionFetch(input, init = {}) {
@@ -124,12 +137,12 @@ export function createCollectionFetch({
         if (await looksBlocked(response)) {
           counters.blocked += 1;
           state.consecutiveFailures += 1;
-          throw openCircuit(state, host, "blocked");
+          throw openCircuit(state, host, "blocked", attempt);
         }
         if (!RETRYABLE_STATUS.has(Number(response?.status))) {
           state.consecutiveFailures = 0;
           state.reason = null;
-          return response;
+          return recordAttempts(response, attempt);
         }
         if (Number(response.status) === 429) counters.rateLimited += 1;
         lastError = new CollectionTransportError(`${host} 返回可重试的 HTTP ${response.status}。`, {
@@ -153,7 +166,7 @@ export function createCollectionFetch({
     }
 
     state.consecutiveFailures += 1;
-    if (state.consecutiveFailures >= transientFailureThreshold) throw openCircuit(state, host, "transient");
+    if (state.consecutiveFailures >= transientFailureThreshold) throw openCircuit(state, host, "transient", attemptsAllowed);
     throw lastError;
   }
 

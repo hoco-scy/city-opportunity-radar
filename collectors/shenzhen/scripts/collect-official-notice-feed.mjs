@@ -15,6 +15,14 @@ const GENERIC_NAVIGATION = /^(招聘|人才招聘|招考招聘|校园招聘|社�
 const ERROR_PAGE = /(?:页面不存在|not found|error 404|访问出错|系统错误)/i;
 const execFileAsync = promisify(execFile);
 
+export function curlTlsCompatibilityArgs(requestedUrl) {
+  try {
+    return new URL(requestedUrl).hostname.toLowerCase() === "hrss.sz.gov.cn"
+      ? ["--tlsv1.2", "--tls-max", "1.2", "--curves", "P-256"]
+      : [];
+  } catch { return []; }
+}
+
 export class OfficialNoticeFeedError extends Error {
   constructor(message) { super(message); this.name = "OfficialNoticeFeedError"; }
 }
@@ -62,9 +70,10 @@ function extractAnchors(html, baseUrl, domains) {
 
 async function curlPage(requestedUrl, headers = {}) {
   const headerArgs = Object.entries(headers).flatMap(([name, value]) => ["-H", name + ": " + value]);
+  const tlsCompatibilityArgs = curlTlsCompatibilityArgs(requestedUrl);
   const marker = "\n__RADAR_META__";
   const { stdout } = await execFileAsync("curl", [
-    "-sS", "-L", "--max-time", "30", "--max-redirs", "5", "-A", "Mozilla/5.0", ...headerArgs,
+    "-sS", "-L", "--max-time", "30", "--max-redirs", "5", "-A", "Mozilla/5.0", ...tlsCompatibilityArgs, ...headerArgs,
     "-w", marker + "%{http_code}\t%{url_effective}", requestedUrl
   ], { encoding: "utf8", maxBuffer: 12_000_000 });
   const index = stdout.lastIndexOf(marker);
@@ -82,27 +91,49 @@ async function requestPage(requestedUrl, fetchImpl, headers = {}) {
     });
   } catch (error) {
     if (error?.kind === "circuit-open" || (fetchImpl !== globalThis.fetch && !fetchImpl.isResilientCollectionFetch)) throw error;
-    return curlPage(requestedUrl, headers);
+    const previousAttempts = Math.max(1, Number(error?.attempts) || 1);
+    try {
+      const response = await curlPage(requestedUrl, headers);
+      response.collectionAttempts = previousAttempts + 1;
+      return response;
+    } catch (curlError) {
+      curlError.attempts = previousAttempts + 1;
+      throw curlError;
+    }
   }
 }
 
 async function fetchOfficialPage(requestedUrl, domains, fetchImpl, depth = 0) {
   let response = await requestPage(requestedUrl, fetchImpl);
+  let attempts = Math.max(1, Number(response.collectionAttempts) || 1);
   let html = await response.text();
   let finalUrl = response.url || requestedUrl;
   let semantic404 = ERROR_PAGE.test(html) || /(?:\/404|\/error)(?:[/?#]|$)/i.test(finalUrl);
   if ((!response.ok || semantic404) && (fetchImpl === globalThis.fetch || fetchImpl.isResilientCollectionFetch) && !response.viaCurl) {
-    response = await curlPage(requestedUrl);
+    try {
+      response = await curlPage(requestedUrl);
+      attempts += 1;
+    } catch (error) {
+      error.attempts = attempts + 1;
+      throw error;
+    }
     html = await response.text();
     finalUrl = response.url || requestedUrl;
     semantic404 = ERROR_PAGE.test(html) || /(?:\/404|\/error)(?:[/?#]|$)/i.test(finalUrl);
   }
-  if (!isOfficialUrl(finalUrl, domains)) throw new OfficialNoticeFeedError("官方来源请求跳转到未登记域名，已停止采集。");
+  if (!isOfficialUrl(finalUrl, domains)) {
+    const error = new OfficialNoticeFeedError("官方来源请求跳转到未登记域名，已停止采集。");
+    error.attempts = attempts;
+    throw error;
+  }
   if (depth < 2 && html.length < 5_000) {
     const scriptTarget = html.match(/window\.location(?:\.href)?\s*=\s*["']([^"']+)["']/i)?.[1];
-    if (scriptTarget) return fetchOfficialPage(new URL(scriptTarget, finalUrl).toString(), domains, fetchImpl, depth + 1);
+    if (scriptTarget) {
+      const next = await fetchOfficialPage(new URL(scriptTarget, finalUrl).toString(), domains, fetchImpl, depth + 1);
+      return { ...next, attempts: attempts + next.attempts };
+    }
   }
-  return { ok: response.ok && !semantic404, semantic404, finalUrl, html };
+  return { ok: response.ok && !semantic404, semantic404, finalUrl, html, attempts };
 }
 
 function primaryUrls(source) {
@@ -119,12 +150,14 @@ export async function collectOfficialNoticeFeed({ source, fetchImpl = fetch, det
     ? urls.length
     : Math.max(["critical", "active"].includes(source.tier) ? 3 : 1, urls.length);
   const accessEvidence = [];
+  let attempts = 0;
   let page;
 
   for (let index = 0; index < attemptsRequired && !page; index += 1) {
     const requestedUrl = urls[index % urls.length];
     try {
       const result = await fetchOfficialPage(requestedUrl, domains, fetchImpl);
+      attempts += Math.max(1, Number(result.attempts) || 1);
       if (result.ok) {
         page = { ...result, requestedUrl };
         accessEvidence.push({ requestedUrl, finalUrl: result.finalUrl, outcome: "official-page", recipe: "已读取官方公告/招聘页，抽取同域招聘链接后逐页检查。" });
@@ -134,6 +167,7 @@ export async function collectOfficialNoticeFeed({ source, fetchImpl = fetch, det
         accessEvidence.push({ requestedUrl, outcome: "network-error", recipe: "官方入口未返回可用页面。" });
       }
     } catch (error) {
+      attempts += Math.max(1, Number(error?.attempts) || 1);
       const accessControlled = error?.circuitReason === "blocked";
       accessEvidence.push({ requestedUrl, outcome: accessControlled ? "access-control" : "network-error", recipe: accessControlled ? "官方入口触发访问控制，已停止继续请求且不尝试绕过。" : `官方入口本轮无法读取：${error?.name || "fetch-error"}。` });
     }
@@ -145,7 +179,7 @@ export async function collectOfficialNoticeFeed({ source, fetchImpl = fetch, det
       collectionMethod: "official-notice-feed",
       collectionRoute: "登记官方公告/招聘页 → 同域招聘链接 → 公告正文",
       status: accessEvidence.some((item) => item.outcome === "access-control") ? "accessible-incomplete" : accessEvidence.some((item) => item.outcome === "semantic-404") ? "semantic-404" : "temporarily-unavailable",
-      accessEvidence, attempts: accessEvidence.length,
+      accessEvidence, attempts,
       collected: null, afterFilter: null, noticeItems: [],
       reason: accessEvidence.some((item) => item.outcome === "access-control") ? "官方入口触发访问控制，本轮已停止继续请求并保留上次结果；不尝试绕过，也不据此判断无岗位。" : "本轮未取得可读取的官方公告/招聘页，不能据此判断无岗位。"
     };
@@ -159,7 +193,7 @@ export async function collectOfficialNoticeFeed({ source, fetchImpl = fetch, det
     return {
       sourceId: source.id, collectionMethod: "official-roster-refresh",
       collectionRoute: "国务院国资委官方中央企业名录页 → 名录变更核对",
-      status: "checked-roster-current", accessEvidence, attempts: accessEvidence.length,
+      status: "checked-roster-current", accessEvidence, attempts,
       collected: 1, afterFilter: 0, noticeItems: [],
       reason: "已读取官方中央企业名录页；名录用于限定重点单位范围，不把名录本身当作招聘岗位。"
     };
@@ -168,7 +202,7 @@ export async function collectOfficialNoticeFeed({ source, fetchImpl = fetch, det
     return {
       sourceId: source.id, collectionMethod: "official-notice-feed",
       collectionRoute: "登记官方公告/招聘页 → 同域招聘链接 → 公告正文",
-      status: "accessible-incomplete", accessEvidence, attempts: accessEvidence.length,
+      status: "accessible-incomplete", accessEvidence, attempts,
       collected: null, afterFilter: null, noticeItems: [],
       reason: "已读取官方入口，但专用脚本尚未从当前页面结构中解析出可安全跟进的招聘列表；该来源需要继续适配，不能按 0 条理解。"
     };
@@ -200,7 +234,7 @@ export async function collectOfficialNoticeFeed({ source, fetchImpl = fetch, det
     return {
       sourceId: source.id, collectionMethod: "official-notice-feed",
       collectionRoute: "登记官方公告/招聘页 → 同域招聘链接 → 公告正文",
-      status: "accessible-incomplete", accessEvidence, attempts: accessEvidence.length,
+      status: "accessible-incomplete", accessEvidence, attempts,
       collected: null, afterFilter: null, noticeItems: [],
       reason: "已发现招聘导航或链接，但专用脚本没有取得可核验的公告正文；可能跳转到独立招聘系统或动态列表，需要继续适配，不能按 0 条理解。"
     };
@@ -209,9 +243,25 @@ export async function collectOfficialNoticeFeed({ source, fetchImpl = fetch, det
     sourceId: source.id,
     collectionMethod: "official-notice-feed",
     collectionRoute: "登记官方公告/招聘页 → 同域招聘链接 → 公告正文",
-    status: "checked-official-notice-feed", accessEvidence, attempts: accessEvidence.length,
+    status: "checked-official-notice-feed", accessEvidence, attempts,
     collected: noticeItems.length, afterFilter: noticeItems.length, noticeItems,
     reason: `已读取 ${noticeItems.length} 条同域招聘/公告正文；公告阶段不按医疗词删减，待取得具体岗位和官方资格字段后再判断专业是否可报。`
+  };
+}
+
+export function createOfficialNoticeFeedCollector({ fetchImpl = fetch, detailLimit = 30 } = {}) {
+  const pending = new Map();
+  return async (source) => {
+    const urls = primaryUrls(source);
+    const domains = [...officialDomains(source)].sort();
+    const key = source.id === "central-enterprise-roster"
+      ? `source:${source.id}`
+      : JSON.stringify({ urls, domains, tier: source.tier, detailLimit });
+    if (!pending.has(key)) {
+      pending.set(key, collectOfficialNoticeFeed({ source, fetchImpl, detailLimit }));
+    }
+    const result = await pending.get(key);
+    return result.sourceId === source.id ? result : { ...result, sourceId: source.id };
   };
 }
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { collectOfficialNoticeFeed } from "../scripts/collect-official-notice-feed.mjs";
+import { collectOfficialNoticeFeed, createOfficialNoticeFeedCollector, curlTlsCompatibilityArgs } from "../scripts/collect-official-notice-feed.mjs";
 import { createCollectionFetch } from "../scripts/resilient-fetch.mjs";
 
 function response({ url, html, ok = true, status = 200 }) {
@@ -11,6 +11,11 @@ const source = {
   id: "example-official", entryUrl: "https://jobs.example.gov.cn/recruitment.html",
   domains: ["example.gov.cn"], tier: "priority"
 };
+
+test("仅深圳人社局入口使用已验证的 Linux TLS 兼容参数", () => {
+  assert.deepEqual(curlTlsCompatibilityArgs("https://hrss.sz.gov.cn/gzryzk/index.html"), ["--tlsv1.2", "--tls-max", "1.2", "--curves", "P-256"]);
+  assert.deepEqual(curlTlsCompatibilityArgs("https://jobs.example.gov.cn/recruitment.html"), []);
+});
 
 test("官方公告采集器读取同域招聘链接和公告正文，而非只探测首页", async () => {
   const result = await collectOfficialNoticeFeed({
@@ -128,4 +133,41 @@ test("日常工作流遇到验证码/WAF 时停止请求并降级保留旧数据
   assert.equal(result.status, "accessible-incomplete");
   assert.equal(result.accessEvidence[0].outcome, "access-control");
   assert.equal(calls, 1);
+});
+
+test("共享传输失败时记录真实的三次网络尝试", async () => {
+  let calls = 0;
+  const fetchImpl = createCollectionFetch({
+    fetchImpl: async () => { calls += 1; throw new TypeError("socket disconnected"); },
+    minHostIntervalMs: 0,
+    backoffMs: [0, 0, 0],
+    transientFailureThreshold: 1
+  });
+  const result = await collectOfficialNoticeFeed({ source: { ...source, tier: "critical" }, fetchImpl });
+  assert.equal(result.status, "temporarily-unavailable");
+  assert.equal(result.attempts, 3);
+  assert.equal(calls, 3);
+});
+
+test("两个来源共用同一官方入口时只采集一次并分别生成来源结果", async () => {
+  let calls = 0;
+  const collect = createOfficialNoticeFeedCollector({
+    fetchImpl: async (url) => {
+      calls += 1;
+      if (String(url).endsWith("recruitment.html")) return response({
+        url: String(url),
+        html: '<a href="/notices/1.html">2027年度事业单位招聘公告</a>'
+      });
+      return response({ url: String(url), html: "<div>招聘岗位及报名条件</div>" });
+    }
+  });
+  const [first, second] = await Promise.all([
+    collect({ ...source, id: "shenzhen-personnel-exam", tier: "critical" }),
+    collect({ ...source, id: "shenzhen-institutions", tier: "critical" })
+  ]);
+  assert.equal(calls, 2);
+  assert.equal(first.sourceId, "shenzhen-personnel-exam");
+  assert.equal(second.sourceId, "shenzhen-institutions");
+  assert.equal(first.status, "checked-official-notice-feed");
+  assert.equal(second.status, "checked-official-notice-feed");
 });

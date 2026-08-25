@@ -22,7 +22,9 @@ test("429 会遵守 Retry-After 后重试", async () => {
     sleep: async (delay) => { sleeps.push(delay); },
     random: () => 0.5
   });
-  assert.equal((await resilientFetch("https://jobs.example.cn/list")).status, 200);
+  const result = await resilientFetch("https://jobs.example.cn/list");
+  assert.equal(result.status, 200);
+  assert.equal(result.collectionAttempts, 2);
   assert.equal(calls, 2);
   assert.deepEqual(sleeps, [2_000]);
   assert.equal(resilientFetch.stats().rateLimited, 1);

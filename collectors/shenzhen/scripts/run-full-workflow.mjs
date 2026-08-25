@@ -13,7 +13,7 @@ import { collectNCSSDiscovery } from "./collect-ncss-discovery.mjs";
 import { collectPiccCampus } from "./collect-picc-campus.mjs";
 import { collectBoeCampus } from "./collect-boe-campus.mjs";
 import { collectCrcCareers } from "./collect-crc-careers.mjs";
-import { collectOfficialNoticeFeed } from "./collect-official-notice-feed.mjs";
+import { createOfficialNoticeFeedCollector } from "./collect-official-notice-feed.mjs";
 import { createCollectionFetch } from "./resilient-fetch.mjs";
 import { mergeDiscoveryCandidates, mergeOfficialMonitors } from "./collection-merge.mjs";
 
@@ -285,6 +285,7 @@ async function main() {
   const structuredResults = new Map([picc, boe, crc].map((result) => [result.sourceId, result]));
   const publicExamChecks = new Map(publicExamRun.sourceChecks.map((check) => [check.sourceId, check]));
   const officialNoticeResults = new Map();
+  const collectOfficialNotice = createOfficialNoticeFeedCollector({ fetchImpl: collectionFetch });
   const scheduledIds = [...new Set([...(sourcePlan.coverage.everyRunOfficial || []), ...(sourcePlan.coverage.everyRunDiscovery || [])])];
   const sourceChecks = await Promise.all(scheduledIds.map(async (sourceId) => {
     const source = sources.get(sourceId);
@@ -303,7 +304,7 @@ async function main() {
     if (route.collector === "boe-campus") return verifiedJobsSourceCheck(source, boe, checkedAt);
     if (route.collector === "crc-careers") return verifiedJobsSourceCheck(source, crc, checkedAt);
     if (route.collector === "official-notice-feed") {
-      const result = await collectOfficialNoticeFeed({ source, fetchImpl: collectionFetch });
+      const result = await collectOfficialNotice(source);
       officialNoticeResults.set(sourceId, result);
       return officialNoticeSourceCheck(result, checkedAt);
     }
