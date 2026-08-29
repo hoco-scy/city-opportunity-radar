@@ -7,6 +7,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 
@@ -14,6 +15,14 @@ const RECRUITMENT_LINK = /(招聘|招考|招录|人才|校园|校招|应届|毕�
 const GENERIC_NAVIGATION = /^(招聘|人才招聘|招考招聘|校园招聘|社会招聘|招聘信息|招聘动态|事业单位)$/;
 const ERROR_PAGE = /(?:页面不存在|not found|error 404|访问出错|系统错误)/i;
 const execFileAsync = promisify(execFile);
+const PERSISTENT_DETAIL_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
+
+function persistentDetailOptions(source, anchor) {
+  const fingerprint = createHash("sha256")
+    .update(JSON.stringify({ sourceId: source.id, url: anchor.url, title: anchor.title }))
+    .digest("hex");
+  return { radarCacheScope: "persistent", radarCacheKey: `notice-detail:${fingerprint}`, radarCacheTtlMs: PERSISTENT_DETAIL_TTL_MS };
+}
 
 export function curlTlsCompatibilityArgs(requestedUrl) {
   try {
@@ -103,7 +112,7 @@ export async function retryTlsCompatibleCurl(requestedUrl, headers = {}, {
   throw lastError;
 }
 
-async function requestPage(requestedUrl, fetchImpl, headers = {}) {
+async function requestPage(requestedUrl, fetchImpl, headers = {}, requestOptions = {}) {
   if (curlTlsCompatibilityArgs(requestedUrl).length) {
     return retryTlsCompatibleCurl(requestedUrl, headers);
   }
@@ -111,7 +120,8 @@ async function requestPage(requestedUrl, fetchImpl, headers = {}) {
     return await fetchImpl(requestedUrl, {
       redirect: "follow",
       headers: { accept: "text/html,application/xhtml+xml", "user-agent": "Mozilla/5.0", ...headers },
-      signal: AbortSignal.timeout(25_000)
+      signal: AbortSignal.timeout(25_000),
+      ...requestOptions
     });
   } catch (error) {
     if (error?.kind === "circuit-open" || (fetchImpl !== globalThis.fetch && !fetchImpl.isResilientCollectionFetch)) throw error;
@@ -127,8 +137,8 @@ async function requestPage(requestedUrl, fetchImpl, headers = {}) {
   }
 }
 
-async function fetchOfficialPage(requestedUrl, domains, fetchImpl, depth = 0) {
-  let response = await requestPage(requestedUrl, fetchImpl);
+async function fetchOfficialPage(requestedUrl, domains, fetchImpl, depth = 0, requestOptions = {}) {
+  let response = await requestPage(requestedUrl, fetchImpl, {}, requestOptions);
   let attempts = Math.max(1, Number(response.collectionAttempts) || 1);
   let html = await response.text();
   let finalUrl = response.url || requestedUrl;
@@ -153,7 +163,7 @@ async function fetchOfficialPage(requestedUrl, domains, fetchImpl, depth = 0) {
   if (depth < 2 && html.length < 5_000) {
     const scriptTarget = html.match(/window\.location(?:\.href)?\s*=\s*["']([^"']+)["']/i)?.[1];
     if (scriptTarget) {
-      const next = await fetchOfficialPage(new URL(scriptTarget, finalUrl).toString(), domains, fetchImpl, depth + 1);
+      const next = await fetchOfficialPage(new URL(scriptTarget, finalUrl).toString(), domains, fetchImpl, depth + 1, requestOptions);
       return { ...next, attempts: attempts + next.attempts };
     }
   }
@@ -244,7 +254,7 @@ export async function collectOfficialNoticeFeed({ source, fetchImpl = fetch, det
       continue;
     }
     try {
-      const detail = await fetchOfficialPage(anchor.url, domains, fetchImpl);
+      const detail = await fetchOfficialPage(anchor.url, domains, fetchImpl, 0, persistentDetailOptions(source, anchor));
       if (!detail.ok) continue;
       const detailText = normalizeText(detail.html);
       // This is a notice-level relevance filter.  It deliberately remains
@@ -281,11 +291,12 @@ export function createOfficialNoticeFeedCollector({ fetchImpl = fetch, detailLim
     const key = source.id === "central-enterprise-roster"
       ? `source:${source.id}`
       : JSON.stringify({ urls, domains, tier: source.tier, detailLimit });
-    if (!pending.has(key)) {
+    const sharedCollectorCacheHit = pending.has(key);
+    if (!sharedCollectorCacheHit) {
       pending.set(key, collectOfficialNoticeFeed({ source, fetchImpl, detailLimit }));
     }
     const result = await pending.get(key);
-    return result.sourceId === source.id ? result : { ...result, sourceId: source.id };
+    return { ...result, sourceId: source.id, sharedCollectorCacheHit };
   };
 }
 

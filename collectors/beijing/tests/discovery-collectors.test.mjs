@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { collectBuaaDiscovery } from "../scripts/collect-buaa-discovery.mjs";
-import { collectIGuopinDiscovery } from "../scripts/collect-iguopin-discovery.mjs";
-import { collectNCSSDiscovery } from "../scripts/collect-ncss-discovery.mjs";
+import { collectIGuopinDiscovery, DISCOVERY_KEYWORDS as IGUOPIN_KEYWORDS } from "../scripts/collect-iguopin-discovery.mjs";
+import { collectNCSSDiscovery, DISCOVERY_KEYWORDS as NCSS_KEYWORDS } from "../scripts/collect-ncss-discovery.mjs";
 
 function response(data, url, { text } = {}) {
   return { ok: true, status: 200, url, json: async () => data, text: async () => text ?? JSON.stringify(data) };
@@ -46,7 +46,7 @@ test("国聘采集器使用公开城市关键词分页，并排除无生物医�
       const payload = JSON.parse(init.body);
       requestedKeywords.push(payload.search.keyword);
       assert.deepEqual(payload.search.district, ["000000.110000"]);
-      const job = payload.search.keyword === "医疗器械" ? {
+      const job = payload.search.keyword === "生物医学工程" ? {
         job_id: "iguopin-1", status: 1, job_name: "医疗器械研发工程师", company_name: "示例医疗器械公司",
         company_info: { nature_cn: "国企" },
         nature_cn: "校招", education_cn: "硕士", experience_cn: "无经验", major_cn: ["生物医学工程"],
@@ -60,14 +60,17 @@ test("国聘采集器使用公开城市关键词分页，并排除无生物医�
       return response({ code: 200, data: { total: job ? 1 : 0, list: job ? [job] : [] } }, String(url));
     }
   });
-  assert.equal(result.nativeFilterQueries, 11);
+  assert.equal(result.nativeFilterQueries, 6);
   assert.equal(result.deduplicatedCandidates, 2);
   assert.equal(result.leads.length, 1);
   assert.equal(result.leads.find((lead) => lead.id === "iguopin-1").employerNature, "国企");
   assert.equal(result.leads.find((lead) => lead.id === "iguopin-1").employerApplyUrl, "https://jobs.example.org/apply?id=1");
   assert.ok(!result.leads.some((lead) => lead.id === "iguopin-cs"));
   assert.equal(result.detailOutcomes["pure-computing-role-mismatch"], 1);
-  assert.equal(new Set(requestedKeywords).size, 11);
+  assert.equal(new Set(requestedKeywords).size, 6);
+  assert.deepEqual(requestedKeywords, IGUOPIN_KEYWORDS);
+  assert.deepEqual(requestedKeywords, ["生物医学工程", "生物医工", "医学工程", "工学", "理工类", "专业不限"]);
+  assert.ok(["医学影像", "仪器", "电子信息", "自动化", "工程类"].every((keyword) => !requestedKeywords.includes(keyword)));
 });
 
 test("国聘采集器保留官方明确允许工学门类报名的岗位", async () => {
@@ -75,7 +78,7 @@ test("国聘采集器保留官方明确允许工学门类报名的岗位", async
     city: "北京",
     fetchImpl: async (url, init = {}) => {
       const keyword = JSON.parse(init.body).search.keyword;
-      const job = keyword === "工程类" ? {
+      const job = keyword === "工学" ? {
         job_id: "iguopin-broad", status: 1, job_name: "国际市场助理", company_name: "示例公司",
         company_info: { nature_cn: "国企" },
         nature_cn: "校招", education_cn: "本科", experience_cn: "无经验", major_cn: ["工学全类"],
@@ -93,7 +96,7 @@ test("国聘采集器排除民企，即使岗位专业与工作内容相关", as
     city: "北京",
     fetchImpl: async (url, init = {}) => {
       const keyword = JSON.parse(init.body).search.keyword;
-      const job = keyword === "医疗器械" ? {
+      const job = keyword === "生物医学工程" ? {
         job_id: "iguopin-private", status: 1, job_name: "医疗器械研发工程师", company_name: "示例民企",
         company_info: { nature_cn: "民营企业" }, nature_cn: "校招", education_cn: "硕士", experience_cn: "无经验", major_cn: ["生物医学工程"],
         contents: "医疗器械研发", start_time: "2099-01-01", end_time: "2099-12-31", district_list: [{ area_cn: "北京" }]
@@ -116,7 +119,7 @@ test("国家大学生就业服务平台按专业资格保留岗位并继续排�
         assert.equal(parsed.searchParams.get("areaCode"), "110100");
         assert.ok(parsed.searchParams.get("jobName"));
         const keyword = parsed.searchParams.get("jobName");
-        const list = keyword === "医疗器械" ? [
+        const list = keyword === "生物医学工程" ? [
           { jobId: "ncss-good", jobName: "医疗器械研发工程师", recName: "示例国企", recProperty: "国有企业", degreeName: "硕士及以上", major: "生物医学工程", areaCodeName: "北京市", publishDate: Date.UTC(2099, 0, 1) },
           { jobId: "ncss-ai", jobName: "人工智能工程师", recName: "示例国企", recProperty: "国有企业", degreeName: "硕士", major: "生物医学工程", areaCodeName: "北京市", publishDate: Date.UTC(2099, 0, 1) },
           { jobId: "ncss-private", jobName: "医疗器械研发工程师", recName: "示例民企", recProperty: "民营企业", degreeName: "硕士", major: "生物医学工程", areaCodeName: "北京市", publishDate: Date.UTC(2099, 0, 1) }
@@ -128,7 +131,7 @@ test("国家大学生就业服务平台按专业资格保留岗位并继续排�
       throw new Error(`unexpected request: ${url}`);
     }
   });
-  assert.equal(result.nativeFilterQueries, 11);
+  assert.equal(result.nativeFilterQueries, 6);
   assert.equal(result.deduplicatedCandidates, 3);
   assert.equal(result.detailsChecked, 2);
   assert.equal(result.leads.length, 1);
@@ -136,5 +139,24 @@ test("国家大学生就业服务平台按专业资格保留岗位并继续排�
   assert.ok(!result.leads.some((lead) => lead.id === "ncss-ai"));
   assert.equal(result.detailOutcomes["pure-computing-role-mismatch"], 1);
   assert.equal(result.detailOutcomes["employer-nature-mismatch"], 1);
-  assert.equal(listRequests.length, 11);
+  assert.equal(listRequests.length, 6);
+  assert.deepEqual(listRequests.map((url) => url.searchParams.get("jobName")), NCSS_KEYWORDS);
+});
+
+test("国家大学生就业服务平台识别公开分页上限后不对每个关键词重复撞登录墙", async () => {
+  const requestedOffsets = [];
+  const result = await collectNCSSDiscovery({
+    city: "北京",
+    fetchImpl: async (url) => {
+      const parsed = new URL(String(url));
+      const offset = Number(parsed.searchParams.get("offset"));
+      requestedOffsets.push(offset);
+      if (offset === 6) return response({ flag: false, global: [{ des: "请登录后继续查看" }] }, String(url));
+      return response({ flag: true, data: { list: [{ jobId: `${parsed.searchParams.get("jobName")}-${offset}`, recProperty: "民营企业" }], pagenation: { count: 200, total: 10 } } }, String(url));
+    },
+  });
+  assert.equal(requestedOffsets.filter((offset) => offset === 6).length, 1);
+  assert.equal(result.queries[0].pagesRead, 5);
+  assert.ok(result.queries.slice(1).every((query) => query.pagesRead === 5));
+  assert.match(result.partialReason, /第 6 页要求登录/);
 });

@@ -261,6 +261,58 @@ function monitorFromOfficialNotice(item, source, checkedAt) {
   };
 }
 
+function measuredFetch(fetchImpl, performance) {
+  const wrapped = async (...request) => {
+    const startedAt = Date.now();
+    performance.logicalRequests += 1;
+    try {
+      const response = await fetchImpl(...request);
+      performance.actualAttempts += Number(response?.collectionAttempts ?? 1);
+      if (response?.radarSharedCacheHit) performance.sharedCacheHits += 1;
+      if (response?.radarPersistentCacheHit) performance.persistentCacheHits += 1;
+      return response;
+    } catch (error) {
+      performance.actualAttempts += Number(error?.attempts || 0);
+      throw error;
+    } finally {
+      performance.requestDurationMs += Date.now() - startedAt;
+    }
+  };
+  wrapped.isResilientCollectionFetch = fetchImpl.isResilientCollectionFetch;
+  wrapped.stats = fetchImpl.stats;
+  return wrapped;
+}
+
+async function runMeasuredCollector(sourceId, fetchImpl, collect, records) {
+  const startedAt = Date.now();
+  const performance = { sourceId, logicalRequests: 0, actualAttempts: 0, sharedCacheHits: 0, persistentCacheHits: 0, requestDurationMs: 0 };
+  try {
+    return await collect(measuredFetch(fetchImpl, performance));
+  } finally {
+    records.push({ ...performance, durationMs: Date.now() - startedAt });
+  }
+}
+
+async function runMeasuredOperation(sourceId, collect, records) {
+  const startedAt = Date.now();
+  let result;
+  try {
+    result = await collect();
+    return result;
+  } finally {
+    const cacheHit = Boolean(result?.sharedCollectorCacheHit);
+    const attempts = cacheHit ? 0 : Number(result?.attempts || 0);
+    records.push({
+      sourceId,
+      logicalRequests: cacheHit ? 1 : attempts,
+      actualAttempts: attempts,
+      sharedCacheHits: cacheHit ? 1 : 0,
+      requestDurationMs: Date.now() - startedAt,
+      durationMs: Date.now() - startedAt,
+    });
+  }
+}
+
 async function main() {
   const [registry, recipes, sourcePlan, collectorRoutes, log, opportunities] = await Promise.all([
     readJson("data/source-registry.json"), readJson("data/filter-recipes.json"), readJson("data/source-plan.json"), readJson("data/collector-routes.json"), readJson("data/review-log.json"), readJson("data/opportunities.json")
@@ -274,21 +326,22 @@ async function main() {
     maxRetryAfterMs: sourcePlan.requestPolicy?.maxRetryAfterMs || 300_000,
     circuitCooldownMs: sourcePlan.requestPolicy?.circuitCooldownMs || 300_000
   });
+  const performanceRecords = [];
   const [publicExamRun, buaa, iguopin, ncss, picc, boe, crc] = await Promise.all([
-    buildPublicExamRun({ registry, recipes, checkedAt, fetchImpl: collectionFetch }),
-    collectBuaaDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("buaa-career-discovery", error)),
-    collectIGuopinDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("iguopin-discovery", error)),
-    collectNCSSDiscovery({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableDiscoveryResult("national-college-employment", error)),
-    collectPiccCampus({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("picc-campus", error)),
-    collectBoeCampus({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("boe-campus", error)),
-    collectCrcCareers({ city: recipes.city, fetchImpl: collectionFetch }).catch((error) => unavailableStructuredResult("crc-careers", error))
+    runMeasuredCollector("public-exam-group", collectionFetch, (fetchImpl) => buildPublicExamRun({ registry, recipes, checkedAt, fetchImpl }), performanceRecords),
+    runMeasuredCollector("buaa-career-discovery", collectionFetch, (fetchImpl) => collectBuaaDiscovery({ city: recipes.city, fetchImpl }), performanceRecords).catch((error) => unavailableDiscoveryResult("buaa-career-discovery", error)),
+    runMeasuredCollector("iguopin-discovery", collectionFetch, (fetchImpl) => collectIGuopinDiscovery({ city: recipes.city, fetchImpl }), performanceRecords).catch((error) => unavailableDiscoveryResult("iguopin-discovery", error)),
+    runMeasuredCollector("national-college-employment", collectionFetch, (fetchImpl) => collectNCSSDiscovery({ city: recipes.city, fetchImpl }), performanceRecords).catch((error) => unavailableDiscoveryResult("national-college-employment", error)),
+    runMeasuredCollector("picc-campus", collectionFetch, (fetchImpl) => collectPiccCampus({ city: recipes.city, fetchImpl }), performanceRecords).catch((error) => unavailableStructuredResult("picc-campus", error)),
+    runMeasuredCollector("boe-campus", collectionFetch, (fetchImpl) => collectBoeCampus({ city: recipes.city, fetchImpl }), performanceRecords).catch((error) => unavailableStructuredResult("boe-campus", error)),
+    runMeasuredCollector("crc-careers", collectionFetch, (fetchImpl) => collectCrcCareers({ city: recipes.city, fetchImpl }), performanceRecords).catch((error) => unavailableStructuredResult("crc-careers", error))
   ]);
   const structuredResults = new Map([picc, boe, crc].map((result) => [result.sourceId, result]));
   const publicExamChecks = new Map(publicExamRun.sourceChecks.map((check) => [check.sourceId, check]));
   const officialNoticeResults = new Map();
   const collectOfficialNotice = createOfficialNoticeFeedCollector({ fetchImpl: collectionFetch });
   const scheduledIds = [...new Set([...(sourcePlan.coverage.everyRunOfficial || []), ...(sourcePlan.coverage.everyRunDiscovery || [])])];
-  const sourceChecks = await Promise.all(scheduledIds.map(async (sourceId) => {
+  let sourceChecks = await Promise.all(scheduledIds.map(async (sourceId) => {
     const source = sources.get(sourceId);
     if (!source) throw new Error(`source-plan 引用了不存在的来源：${sourceId}`);
     const route = collectorRoutes.routes?.[sourceId];
@@ -305,12 +358,14 @@ async function main() {
     if (route.collector === "boe-campus") return verifiedJobsSourceCheck(source, boe, checkedAt);
     if (route.collector === "crc-careers") return verifiedJobsSourceCheck(source, crc, checkedAt);
     if (route.collector === "official-notice-feed") {
-      const result = await collectOfficialNotice(source);
+      const result = await runMeasuredOperation(sourceId, () => collectOfficialNotice(source), performanceRecords);
       officialNoticeResults.set(sourceId, result);
       return officialNoticeSourceCheck(result, checkedAt);
     }
     throw new Error(`${sourceId} 登记了不受支持的采集器：${route.collector}`);
   }));
+  const performanceBySource = new Map(performanceRecords.map((performance) => [performance.sourceId, performance]));
+  sourceChecks = sourceChecks.map((check) => check.performance ? check : { ...check, performance: performanceBySource.get(check.sourceId) ?? null });
   const incomplete = incompleteCount(sourceChecks);
   const publicMetrics = publicExamRun.screeningMetrics || {};
   const discoveryCandidates = [
@@ -346,6 +401,10 @@ async function main() {
       discoverySourcesChecked: 3, discoveryOfficialCandidates: buaa.leads.length + iguopin.leads.length + ncss.leads.length
     },
     networkPolicy: collectionFetch.stats(),
+    collectorPerformance: [
+      ...performanceRecords,
+      ...publicExamRun.sourceChecks.filter((check) => check.performance).map((check) => ({ sourceId: check.sourceId, ...check.performance })),
+    ].sort((left, right) => right.durationMs - left.durationMs),
     sourceChecks, reviews: publicExamRun.reviews
   };
   if (!args.has("--write")) { console.log(JSON.stringify({ dryRun: true, city: recipes.city, run }, null, 2)); return; }

@@ -23,6 +23,12 @@ const USER_AGENT = "Mozilla/5.0 (compatible; OpportunityRadar/1.0; +https://gith
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_ATTACHMENT_BYTES = 30 * 1024 * 1024;
 const MAX_WORKBOOK_BYTES = 20 * 1024 * 1024;
+const PERSISTENT_DETAIL_TTL_MS = 7 * 24 * 60 * 60_000;
+
+function persistentCacheOptions(kind, source, item) {
+  const fingerprint = createHash("sha256").update(JSON.stringify([source.sourceId, item.officialUrl, item.title || item.label || "", item.publishedAt || ""])).digest("hex");
+  return { radarCacheScope: "persistent", radarCacheTtlMs: PERSISTENT_DETAIL_TTL_MS, radarCacheKey: `public-exam:${kind}:${fingerprint}` };
+}
 
 const SOURCE_CONFIG = {
   "national-civil": {
@@ -231,7 +237,7 @@ function isSemanticErrorPage(finalUrl, text) {
   return /\/(?:404|error)(?:[/?#]|$)|页面不存在|访问的页面不存在|not\s+found/i.test(probe);
 }
 
-export async function fetchOfficialText(url, config, fetchImpl = fetch, requestHeaders = {}) {
+export async function fetchOfficialText(url, config, fetchImpl = fetch, requestHeaders = {}, requestOptions = {}) {
   const requested = assertOfficialUrl(url, config);
   const response = await fetchImpl(requested, {
     redirect: "follow",
@@ -241,6 +247,7 @@ export async function fetchOfficialText(url, config, fetchImpl = fetch, requestH
       "accept-language": "zh-CN,zh;q=0.9",
       ...requestHeaders
     },
+    ...requestOptions,
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
   });
   const text = await response.text();
@@ -251,8 +258,8 @@ export async function fetchOfficialText(url, config, fetchImpl = fetch, requestH
   return { text, finalUrl };
 }
 
-export async function fetchOfficialJson(url, config, fetchImpl = fetch, requestHeaders = {}) {
-  const result = await fetchOfficialText(url, config, fetchImpl, requestHeaders);
+export async function fetchOfficialJson(url, config, fetchImpl = fetch, requestHeaders = {}, requestOptions = {}) {
+  const result = await fetchOfficialText(url, config, fetchImpl, requestHeaders, requestOptions);
   try { return { ...result, data: JSON.parse(result.text) }; }
   catch { throw new CollectionSafetyError(`官方接口没有返回可解析 JSON：${result.finalUrl}`); }
 }
@@ -280,11 +287,12 @@ export async function fetchOfficialFormJson(url, form, config, fetchImpl = fetch
   catch { throw new CollectionSafetyError(`官方接口没有返回可解析 JSON：${finalUrl}`); }
 }
 
-export async function fetchOfficialBuffer(url, config, fetchImpl = fetch) {
+export async function fetchOfficialBuffer(url, config, fetchImpl = fetch, requestOptions = {}) {
   const requested = assertOfficialUrl(url, config);
   const response = await fetchImpl(requested, {
     redirect: "follow",
     headers: { "user-agent": USER_AGENT, accept: "application/octet-stream,*/*;q=0.8" },
+    ...requestOptions,
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
   });
   const finalUrl = response.url || requested.toString();
@@ -432,13 +440,13 @@ async function enrichStaticNotices(notices, config, fetchImpl) {
     try {
       let detail;
       try {
-        detail = await fetchOfficialText(notice.officialUrl, config, fetchImpl);
+        detail = await fetchOfficialText(notice.officialUrl, config, fetchImpl, {}, persistentCacheOptions("notice-detail", config, notice));
       } catch (error) {
         const extensionUrl = config.detailExtFallback && /HTTP 404/.test(error.message) && /\.html(?:[?#].*)?$/i.test(notice.officialUrl)
           ? notice.officialUrl.replace(/\.html(?=([?#].*)?$)/i, "_ext.html")
           : undefined;
         if (!extensionUrl) throw error;
-        detail = await fetchOfficialText(extensionUrl, config, fetchImpl);
+        detail = await fetchOfficialText(extensionUrl, config, fetchImpl, {}, persistentCacheOptions("notice-detail", config, { ...notice, officialUrl: extensionUrl }));
       }
       const title = titleFromOfficialDetail(detail.text, notice.title);
       return {
@@ -602,7 +610,13 @@ export async function collectBuaaSelectionProgram({ sourceId, fetchImpl = fetch,
       if (!detailId) throw new CollectionSafetyError("选调高校公告详情链接缺少文章 ID。");
       const detailApiUrl = new URL(source.detailApiUrl);
       detailApiUrl.searchParams.set("id", detailId);
-      const detail = await fetchOfficialJson(detailApiUrl.toString(), source, fetchImpl, { token: publicToken });
+      const detail = await fetchOfficialJson(
+        detailApiUrl.toString(),
+        source,
+        fetchImpl,
+        { token: publicToken },
+        persistentCacheOptions("notice-detail", source, { ...notice, officialUrl: detailApiUrl.toString() })
+      );
       detailPagesVisited.push(detail.finalUrl);
       if (detail.data?.state !== 1) throw new CollectionSafetyError("选调高校公开详情接口未返回成功状态。");
       const payload = detail.data?.object?.article || {};
@@ -699,7 +713,13 @@ async function collectNationalEntry(source, entry, fetchImpl, maxNotices) {
   const errors = [];
   const notices = await Promise.all(chosen.map(async (notice) => {
     try {
-      const detail = await fetchOfficialJson(notice.detailApiUrl, source, fetchImpl);
+      const detail = await fetchOfficialJson(
+        notice.detailApiUrl,
+        source,
+        fetchImpl,
+        {},
+        persistentCacheOptions("notice-detail", source, notice)
+      );
       const article = detail.data?.article || detail.data?.result?.article || {};
       const attachments = [
         ...extractAttachments(article.content || "", detail.finalUrl, source),
@@ -812,7 +832,13 @@ export async function collectShanghaiCivil({ sourceId = "shanghai-civil", select
   const chosen = limited(sourceRelevant, maxNotices);
   const notices = await Promise.all(chosen.map(async (notice) => {
     try {
-      const detail = await fetchOfficialJson(notice.detailApiUrl, source, fetchImpl);
+      const detail = await fetchOfficialJson(
+        notice.detailApiUrl,
+        source,
+        fetchImpl,
+        {},
+        persistentCacheOptions("notice-detail", source, notice)
+      );
       const payload = detail.data?.result || detail.data?.article || {};
       return {
         ...notice,
@@ -1040,7 +1066,7 @@ export async function parsePositionTables(result, { city, fetchImpl = fetch } = 
   const errors = [];
   for (const attachment of candidates) {
     try {
-      const downloaded = await fetchOfficialBuffer(attachment.officialUrl, source, fetchImpl);
+      const downloaded = await fetchOfficialBuffer(attachment.officialUrl, source, fetchImpl, persistentCacheOptions("position-attachment", source, attachment));
       const parsedFiles = parsePositionArtifact(downloaded.buffer, attachment, city || source.defaultCity);
       tables.push({
         attachment: { ...attachment, officialUrl: downloaded.finalUrl },

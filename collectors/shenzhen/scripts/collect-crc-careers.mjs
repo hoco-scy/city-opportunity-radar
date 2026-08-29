@@ -51,6 +51,10 @@ async function postGateway(url, body, fetchImpl) {
   try {
     const response = await fetchImpl(url, {
       method: "POST", redirect: "follow", signal: AbortSignal.timeout(45_000),
+      // The gateway signs each URL with a millisecond timestamp. Its response
+      // is still a read-only function of the API method and body, so provide a
+      // stable per-run cache key for the four-city shared transport.
+      radarCacheKey: `crc-gateway:${Buffer.from(JSON.stringify(body)).toString("base64")}`,
       headers: { "content-type": "application/json", homepageConfigId: WEBSITE_ID, languageIndex: "0", "user-agent": "Mozilla/5.0" },
       body: JSON.stringify(body)
     });

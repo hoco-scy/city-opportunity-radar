@@ -465,8 +465,9 @@ function renderSyncStatus(status, { reset = false } = {}) {
   for (const event of status.events || []) {
     if (event.sequence <= state.syncEventSequence) continue;
     const detail = event.data?.error || event.data?.note || "";
+    const technical = event.data ? JSON.stringify(event.data, null, 2) : "";
     const scope = [event.cityId, event.sourceId].filter(Boolean).join(" · ");
-    list.insertAdjacentHTML("beforeend", `<li class="sync-event sync-event-${escapeHtml(event.level || "info")}"><time>${escapeHtml(dateLabel(event.occurredAt))}</time><div><strong>${escapeHtml(event.message)}</strong>${scope ? `<span>${escapeHtml(scope)}</span>` : ""}${detail ? `<p>${escapeHtml(detail)}</p>` : ""}</div></li>`);
+    list.insertAdjacentHTML("beforeend", `<li class="sync-event sync-event-${escapeHtml(event.level || "info")}"><time>${escapeHtml(dateLabel(event.occurredAt))}</time><div><strong>${escapeHtml(event.message)}</strong>${scope ? `<span>${escapeHtml(scope)}</span>` : ""}${detail ? `<p>${escapeHtml(detail)}</p>` : ""}${technical ? `<details class="sync-event-debug"><summary>技术详情</summary><pre>${escapeHtml(technical)}</pre></details>` : ""}</div></li>`);
     state.syncEventSequence = event.sequence;
   }
   if (!list.children.length) list.innerHTML = "<li class=\"sync-event-empty\">正在等待第一条执行事实…</li>";

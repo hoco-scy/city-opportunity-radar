@@ -9,6 +9,7 @@
  * evidence for a verified job.
  */
 import { pathToFileURL } from "node:url";
+import { createHash } from "node:crypto";
 import { evaluateProfessionalEligibility, mastersEducationEligible, roleIsProfileRelevant } from "./professional-eligibility.mjs";
 
 const ORIGIN = "https://www.ncss.cn";
@@ -19,17 +20,13 @@ const CITY_FILTERS = {
   "广州": "440100",
   "深圳": "440300"
 };
-const KEYWORDS = ["生物医学工程", "医学工程", "生物工程", "医疗器械", "医学影像", "仪器", "电子信息", "自动化", "工程类", "理工类", "专业不限"];
+// Search explicit eligibility rather than vaguely adjacent job domains.
+export const DISCOVERY_KEYWORDS = Object.freeze(["生物医学工程", "生物医工", "医学工程", "工学", "理工类", "专业不限"]);
 const PAGE_SIZE = 20;
-const BIOMEDICAL_CONTEXT = /(生物医学|医疗器械|医学影像|临床工程|体外诊断|IVD|生物信号|医疗|健康|生物工程|生命科学)/i;
-const DIRECT_BIOMEDICAL_BRIDGE = /(生物医学工程|医学工程|医疗器械|医学影像|临床工程|体外诊断|IVD|生物信号|放疗|核医学|康复工程)/i;
-const PURE_COMPUTING = /(网络安全|前端|后端|软件开发|软件工程|算法工程师|人工智能工程师|AI工程师|大模型|云计算)/i;
+const PERSISTENT_DETAIL_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const NON_GRADUATE_RECRUITMENT = /(社招|社会招聘|实习|兼职)/i;
 const REQUIRED_EXPERIENCE = /(?:[1-9]\d*\s*年|[一二三四五六七八九十]年)(?:及以上)?(?:工作|相关|从业)经验/i;
 const TARGET_EMPLOYER_NATURE = /(国企|国有企业|中央企业|事业单位)/;
-const ELIGIBLE_MAJOR_EVIDENCE = /(生物医学工程|医学工程|生物工程|生物技术|医疗器械|医学影像|临床工程|仪器科学|仪器类|工学全类|工学门类|理工类|理工科|所有工学)/i;
-const DIRECT_MAJOR_EVIDENCE = /(生物医学工程|医学工程|生物工程|生物技术|医疗器械|医学影像|临床工程|临床医学|基础医学|医学全类|医药卫生|药学)/i;
-const BROAD_ENGINEERING_EVIDENCE = /(工学全类|工学门类|理工类|理工科|所有工学)/i;
 
 export class NCSSDiscoveryError extends Error {
   constructor(message) { super(message); this.name = "NCSSDiscoveryError"; }
@@ -86,11 +83,19 @@ async function requestList({ areaCode, keyword, offset }, fetchImpl) {
   return { payload: payload.data, url: url.toString() };
 }
 
-async function requestDetail(jobId, fetchImpl) {
-  const url = detailUrl(jobId);
+function persistentDetailOptions(job) {
+  const fingerprint = createHash("sha256")
+    .update(JSON.stringify({ id: job.jobId, title: job.jobName, organization: job.recName, major: job.major, updatedAt: job.updateDate || job.publishDate }))
+    .digest("hex");
+  return { radarCacheScope: "persistent", radarCacheKey: `ncss-detail:${fingerprint}`, radarCacheTtlMs: PERSISTENT_DETAIL_TTL_MS };
+}
+
+async function requestDetail(job, fetchImpl) {
+  const url = detailUrl(job.jobId);
   const response = await fetchImpl(url, {
     headers: { accept: "text/html", "user-agent": "Mozilla/5.0" },
-    signal: AbortSignal.timeout(30_000)
+    signal: AbortSignal.timeout(30_000),
+    ...persistentDetailOptions(job)
   });
   if (response.url && new URL(response.url).hostname !== "www.ncss.cn") throw new NCSSDiscoveryError("国家大学生就业服务平台详情请求跳转到未登记域名，已停止采集。");
   const html = await response.text();
@@ -151,8 +156,9 @@ export async function collectNCSSDiscovery({ city, fetchImpl = fetch, maxPagesPe
   let nativeFilteredResults = 0;
   let truncated = false;
   let partialReason = null;
+  let publicPageCeiling = maxPagesPerQuery;
 
-  for (const keyword of KEYWORDS) {
+  for (const keyword of DISCOVERY_KEYWORDS) {
     const first = await requestList({ areaCode, keyword, offset: 1 }, fetchImpl);
     const pagination = first.payload.pagenation || {};
     const reported = Number(pagination.count || first.payload.list.length || 0);
@@ -163,11 +169,11 @@ export async function collectNCSSDiscovery({ city, fetchImpl = fetch, maxPagesPe
     const totalPages = first.payload.list.length
       ? Math.max(1, Number(pagination.total || Math.ceil(reported / PAGE_SIZE) || 1))
       : 1;
-    const pageLimit = Math.min(totalPages, maxPagesPerQuery);
+    const pageLimit = Math.min(totalPages, maxPagesPerQuery, publicPageCeiling);
     portalResultsReported += reported;
     nativeFilteredResults += reported;
     if (pageLimit < totalPages) truncated = true;
-    queries.push({ keyword, total: reported, pagesRead: pageLimit });
+    let pagesRead = 1;
     const add = (payload) => (payload.list || []).forEach((job) => job?.jobId && raw.set(String(job.jobId), job));
     add(first.payload);
     pagesVisited.push(first.url);
@@ -176,13 +182,16 @@ export async function collectNCSSDiscovery({ city, fetchImpl = fetch, maxPagesPe
         const next = await requestList({ areaCode, keyword, offset }, fetchImpl);
         add(next.payload);
         pagesVisited.push(next.url);
+        pagesRead = offset;
       } catch (error) {
         if (!/要求登录/.test(error?.message || "")) throw error;
         truncated = true;
         partialReason ||= error.message;
+        publicPageCeiling = Math.min(publicPageCeiling, offset - 1);
         break;
       }
     }
+    queries.push({ keyword, total: reported, pagesRead });
   }
 
   const leads = [];
@@ -194,7 +203,7 @@ export async function collectNCSSDiscovery({ city, fetchImpl = fetch, maxPagesPe
       increment(detailOutcomes, preliminary.outcome);
       continue;
     }
-    const detail = await requestDetail(job.jobId, fetchImpl);
+    const detail = await requestDetail(job, fetchImpl);
     detailsChecked += 1;
     const classified = classify(job, detail);
     increment(detailOutcomes, classified.outcome);
@@ -206,7 +215,7 @@ export async function collectNCSSDiscovery({ city, fetchImpl = fetch, maxPagesPe
     collectionMethod: "script",
     collectionRoute: "国家大学生就业服务平台公开城市＋专业可报关键词并集 → 已筛选分页 → 任职条件专业资格预筛",
     portalResultsReported,
-    nativeFilterQueries: KEYWORDS.length,
+    nativeFilterQueries: DISCOVERY_KEYWORDS.length,
     nativeFilteredResults,
     deduplicatedCandidates: raw.size,
     detailsChecked,

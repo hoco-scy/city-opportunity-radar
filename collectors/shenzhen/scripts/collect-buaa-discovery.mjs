@@ -9,6 +9,7 @@
  * publication evidence.
  */
 import { pathToFileURL } from "node:url";
+import { createHash } from "node:crypto";
 import { evaluateProfessionalEligibility, mastersEducationEligible, roleIsProfileRelevant } from "./professional-eligibility.mjs";
 
 const ORIGIN = "https://career.buaa.edu.cn";
@@ -17,11 +18,7 @@ const LIST_URL = `${ORIGIN}/f/recruitmentinfo/ajax_frontRecruitinfo`;
 const DETAIL_URL = `${ORIGIN}/f/recruitmentinfo/ajax_show`;
 const CITY_CODES = { "北京": "110000", "上海": "310000", "广州": "440100", "深圳": "440300" };
 const UNIT_NATURES = ["31", "23", "20"]; // 国企、医疗卫生单位、科研设计单位
-const BIOMEDICAL_CONTEXT = /(生物医学|医疗器械|医学影像|临床工程|体外诊断|IVD|生物信号|医疗|健康|生物工程|生命科学)/i;
-const ENGINEERING_QUALIFICATION = /(生物医学工程|医疗器械|医学影像|生物工程|临床工程|仪器|电子|自动化|工学|理工)/i;
-const DIRECT_BIOMEDICAL_BRIDGE = /(生物医学工程|医疗器械|医学影像|临床工程|体外诊断|IVD|生物信号|放疗|核医学|康复工程)/i;
-const PURE_COMPUTING = /(网络安全|前端|后端|软件开发|软件工程|算法工程师|人工智能工程师|AI工程师|大模型|云计算)/i;
-const ELIGIBLE_MAJOR_EVIDENCE = /(生物医学工程|医学工程|生物工程|生物技术|医疗器械|医学影像|临床工程|仪器科学|仪器类|工学全类|工学门类|理工类|理工科|所有工学)/i;
+const PERSISTENT_DETAIL_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 
 export class BuaaDiscoveryError extends Error {
   constructor(message) { super(message); this.name = "BuaaDiscoveryError"; }
@@ -62,12 +59,20 @@ async function publicToken(fetchImpl) {
   return { token, configUrl: response.url || CONFIG_URL };
 }
 
-async function formJson(url, fields, token, fetchImpl) {
+function persistentDetailOptions(item) {
+  const fingerprint = createHash("sha256")
+    .update(JSON.stringify({ id: item.id, title: item.title, startTime: item.startTime, endTime: item.endTime, updatedAt: item.updateTime }))
+    .digest("hex");
+  return { radarCacheScope: "persistent", radarCacheKey: `buaa-detail:${fingerprint}`, radarCacheTtlMs: PERSISTENT_DETAIL_TTL_MS };
+}
+
+async function formJson(url, fields, token, fetchImpl, requestOptions = {}) {
   const response = await fetchImpl(url, {
     method: "POST",
     headers: { "user-agent": "Mozilla/5.0", "content-type": "application/x-www-form-urlencoded", token },
     body: new URLSearchParams(fields),
-    signal: AbortSignal.timeout(30_000)
+    signal: AbortSignal.timeout(30_000),
+    ...requestOptions
   });
   if (response.url && new URL(response.url).hostname !== "career.buaa.edu.cn") throw new BuaaDiscoveryError("北航公开请求跳转到未登记域名，已停止采集。");
   const data = await response.json().catch(() => undefined);
@@ -137,7 +142,7 @@ export async function collectBuaaDiscovery({ city, fetchImpl = fetch, maxPagesPe
   const detailOutcomes = {};
   let detailsChecked = 0;
   for (const item of raw.values()) {
-    const result = await formJson(DETAIL_URL, { recruitmentId: item.id }, token, fetchImpl);
+    const result = await formJson(DETAIL_URL, { recruitmentId: item.id }, token, fetchImpl, persistentDetailOptions(item));
     detailsChecked += 1;
     const classified = classifyDetail(result.data, item, city);
     detailOutcomes[classified.outcome] = (detailOutcomes[classified.outcome] || 0) + 1;

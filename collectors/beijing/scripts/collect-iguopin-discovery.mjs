@@ -18,18 +18,15 @@ const CITY_FILTERS = {
   "广州": "000000.440000.440100",
   "深圳": "000000.440000.440300"
 };
-const KEYWORDS = ["生物医学工程", "医学工程", "生物工程", "医疗器械", "医学影像", "仪器", "电子信息", "自动化", "工程类", "理工类", "专业不限"];
+// Discovery terms describe explicit eligibility, not vaguely adjacent job
+// domains.  Terms such as 仪器、电子信息、自动化、医学影像 are therefore
+// not standalone searches; an official requirement containing them can only
+// pass later when it also proves this profile is eligible.
+export const DISCOVERY_KEYWORDS = Object.freeze(["生物医学工程", "生物医工", "医学工程", "工学", "理工类", "专业不限"]);
 const PAGE_SIZE = 20;
-const BIOMEDICAL_CONTEXT = /(生物医学|医疗器械|医学影像|临床工程|体外诊断|IVD|生物信号|医疗|健康|生物工程|生命科学)/i;
-const ENGINEERING_QUALIFICATION = /(生物医学工程|医学工程|医疗器械|医学影像|生物工程|临床工程|仪器|电子|自动化|机械|材料|物理|工学|理工)/i;
-const DIRECT_BIOMEDICAL_BRIDGE = /(生物医学工程|医学工程|医疗器械|医学影像|临床工程|体外诊断|IVD|生物信号|放疗|核医学|康复工程)/i;
-const PURE_COMPUTING = /(网络安全|前端|后端|软件开发|软件工程|算法工程师|人工智能工程师|AI工程师|大模型|云计算)/i;
 const CAMPUS_RECRUITMENT = /(校招|校园招聘|应届|管培|毕业生)/i;
 const NON_GRADUATE_RECRUITMENT = /(社招|社会招聘|实习|兼职)/i;
 const REQUIRED_EXPERIENCE = /(?:[1-9]\d*\s*年|[一二三四五六七八九十]年)(?:及以上)?(?:工作|相关|从业)经验/i;
-const ELIGIBLE_MAJOR_EVIDENCE = /(生物医学工程|医学工程|生物工程|生物技术|医疗器械|医学影像|临床工程|仪器科学|仪器类|工学全类|工学门类|理工类|理工科|所有工学)/i;
-const DIRECT_MAJOR_EVIDENCE = /(生物医学工程|医学工程|生物工程|生物技术|医疗器械|医学影像|临床工程|临床医学|基础医学|医学全类|医药卫生|药学)/i;
-const BROAD_ENGINEERING_EVIDENCE = /(工学全类|工学门类|理工类|理工科|所有工学)/i;
 const TARGET_EMPLOYER_NATURE = /(国企|国有企业|中央企业|事业单位)/;
 
 export class IGuopinDiscoveryError extends Error {
@@ -151,7 +148,7 @@ export async function collectIGuopinDiscovery({ city, fetchImpl = fetch, maxPage
   let portalResultsReported = 0;
   let nativeFilteredResults = 0;
   let truncated = false;
-  for (const keyword of KEYWORDS) {
+  for (const keyword of DISCOVERY_KEYWORDS) {
     const first = await requestPage({ city: district, keyword, page: 1 }, fetchImpl);
     const total = Number(first.total || 0);
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -182,7 +179,7 @@ export async function collectIGuopinDiscovery({ city, fetchImpl = fetch, maxPage
     collectionMethod: "script",
     collectionRoute: "国聘公开城市＋专业可报关键词并集 → 已筛选分页 → 任职条件专业资格预筛",
     portalResultsReported,
-    nativeFilterQueries: KEYWORDS.length,
+    nativeFilterQueries: DISCOVERY_KEYWORDS.length,
     nativeFilteredResults,
     deduplicatedCandidates: raw.size,
     detailsChecked: raw.size,

@@ -25,6 +25,10 @@ export function createScheduleController({ db, syncController, timersEnabled = t
   let catchupTimer = null;
   let catchupQueued = false;
   let stopped = false;
+  // A timer may wake a fraction early on a busy host. Remember the schedule
+  // instant we already dispatched so re-arming cannot fire that same slot a
+  // second time before the clock crosses the exact millisecond boundary.
+  let lastDispatchedScheduleMs = 0;
 
   function clearTimer() {
     if (timer) clearTimeout(timer);
@@ -38,7 +42,10 @@ export function createScheduleController({ db, syncController, timersEnabled = t
 
   function current() {
     const schedule = getUpdateSchedule(db);
-    const next = nextDailyRun(schedule, now());
+    let next = nextDailyRun(schedule, now());
+    if (next && next.getTime() <= lastDispatchedScheduleMs) {
+      next = nextDailyRun(schedule, new Date(lastDispatchedScheduleMs + 1));
+    }
     return { ...schedule, nextRunAt: next?.toISOString() ?? null, catchupQueued };
   }
 
@@ -65,8 +72,10 @@ export function createScheduleController({ db, syncController, timersEnabled = t
     }
     if (stopped || !timersEnabled || !schedule.nextRunAt) return schedule;
     const delay = Math.min(Math.max(new Date(schedule.nextRunAt).getTime() - now().getTime(), 1), MAX_TIMEOUT_MS);
+    const scheduledForMs = new Date(schedule.nextRunAt).getTime();
     timer = setTimeout(() => {
       timer = null;
+      lastDispatchedScheduleMs = Math.max(lastDispatchedScheduleMs, scheduledForMs);
       const triggeredAt = now().toISOString();
       markScheduleTriggered(db, triggeredAt);
       const result = syncController.start("schedule");

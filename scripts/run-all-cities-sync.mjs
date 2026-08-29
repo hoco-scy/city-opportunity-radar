@@ -10,9 +10,10 @@
  */
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { access, readFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { constants } from "node:fs";
-import { resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   acquireUpdateLock,
@@ -26,6 +27,12 @@ import {
   prunePublicRetention,
 } from "../db.mjs";
 import { importCityCollectors } from "./import-city-collectors.mjs";
+import { prunePersistentFetchCache } from "./shared-fetch-state.mjs";
+import {
+  collectorPerformanceDiagnostics,
+  processDiagnostics,
+  sourceDiagnostics,
+} from "./internal-diagnostics.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const cityValidationScripts = [
@@ -41,15 +48,24 @@ function argument(name) {
   return index === -1 ? null : process.argv[index + 1] ?? null;
 }
 
-function runNode(cwd, args) {
+function runNode(cwd, args, { env = {} } = {}) {
   return new Promise((resolveRun) => {
-    const child = spawn(process.execPath, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    const startedAt = Date.now();
+    const child = spawn(process.execPath, args, { cwd, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (chunk) => { stdout = `${stdout}${chunk}`.slice(-12_000); });
-    child.stderr.on("data", (chunk) => { stderr = `${stderr}${chunk}`.slice(-12_000); });
-    child.on("error", (error) => resolveRun({ ok: false, stdout, stderr: error.message, code: null }));
-    child.on("close", (code) => resolveRun({ ok: code === 0, stdout, stderr, code }));
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
+    child.stdout.on("data", (chunk) => {
+      stdoutBytes += chunk.length;
+      stdout = `${stdout}${chunk}`.slice(-12_000);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderrBytes += chunk.length;
+      stderr = `${stderr}${chunk}`.slice(-12_000);
+    });
+    child.on("error", (error) => resolveRun({ ok: false, stdout, stderr: error.message, code: null, stdoutBytes, stderrBytes, durationMs: Date.now() - startedAt }));
+    child.on("close", (code) => resolveRun({ ok: code === 0, stdout, stderr, code, stdoutBytes, stderrBytes, durationMs: Date.now() - startedAt }));
   });
 }
 
@@ -77,7 +93,11 @@ function sourceFactMessage(check, sourceName) {
   const counts = metrics && Number.isInteger(metrics.collected) && Number.isInteger(metrics.afterFilter)
     ? `采集 ${metrics.collected} 条，筛选后 ${metrics.afterFilter} 条`
     : "本轮未形成可计数的采集结果";
-  return `${sourceName}：${check.status ?? "状态未注明"}；${counts}。`;
+  const performance = check.performance;
+  const timing = performance
+    ? `；耗时 ${(performance.durationMs / 1_000).toFixed(1)} 秒，${performance.logicalRequests} 个逻辑请求、${performance.actualAttempts} 次外部尝试、${performance.sharedCacheHits || 0} 次缓存命中（其中 ${performance.persistentCacheHits || 0} 次持久详情缓存命中）`
+    : "";
+  return `${sourceName}：${check.status ?? "状态未注明"}；${counts}${timing}。`;
 }
 
 export async function runAllCitiesSync({
@@ -88,94 +108,131 @@ export async function runAllCitiesSync({
 } = {}) {
   const selectedCities = CITY_CATALOG.filter((city) => cityIds.includes(city.id));
   if (!selectedCities.length) throw new Error("没有可执行的城市");
-  const outcomes = [];
+  const workflowStartedAt = Date.now();
+  const outcomes = selectedCities.map((city) => ({ cityId: city.id, cityName: city.name, status: "failed", gates: [], error: null }));
   const importedIds = [];
-  onProgress({ phase: "workflow-start", message: `开始执行 ${selectedCities.length} 个城市的完整更新。`, data: { cityCount: selectedCities.length } });
-
-  for (const city of selectedCities) {
-    const cityRoot = resolve(collectorsRoot, city.id);
-    const outcome = { cityId: city.id, cityName: city.name, status: "failed", gates: [], error: null };
-    outcomes.push(outcome);
-    onProgress({ phase: "city-start", cityId: city.id, message: `${city.name}开始执行完整采集工作流。` });
-    try {
-      await checkCityFolder(cityRoot);
-      onProgress({ phase: "city-workflow-start", cityId: city.id, message: `${city.name}采集脚本已启动。` });
-      const workflow = await runNode(cityRoot, ["scripts/run-full-workflow.mjs", "--full-update", "--write"]);
-      if (!workflow.ok) {
-        outcome.error = conciseError(workflow);
-        onProgress({ phase: "city-failed", level: "error", cityId: city.id, message: `${city.name}采集脚本失败。`, data: { error: outcome.error } });
-        continue;
-      }
-      outcome.workflow = "completed";
-      onProgress({ phase: "city-workflow-complete", cityId: city.id, message: `${city.name}采集脚本执行完成，开始读取来源事实记录。` });
+  onProgress({
+    phase: "workflow-start",
+    message: `开始执行 ${selectedCities.length} 个城市的完整更新。`,
+    data: {
+      cityCount: selectedCities.length,
+      cityIds: selectedCities.map((city) => city.id),
+      executionMode: "parallel-cities-shared-host-queue",
+      runtime: { node: process.version, platform: process.platform, arch: process.arch },
+    },
+  });
+  const sharedFetchStateDir = await mkdtemp(join(tmpdir(), "menglin-radar-fetch-"));
+  const persistentFetchCacheDir = resolve(dirname(databasePath), "fetch-cache");
+  const cachePrune = await prunePersistentFetchCache(persistentFetchCacheDir);
+  onProgress({ phase: "shared-fetch-ready", message: "四城采集已启用本轮共享缓存、详情持久缓存和全局同域限流。", data: { cityCount: selectedCities.length, persistentCachePolicy: "live-lists-7d-rolling-details-30d-hard-refresh", prunedPersistentEntries: cachePrune.removedEntries } });
+  try {
+    await Promise.all(selectedCities.map(async (city, cityIndex) => {
+      const cityRoot = resolve(collectorsRoot, city.id);
+      const outcome = outcomes[cityIndex];
+      const cityStartedAt = Date.now();
+      outcome.startedAt = new Date(cityStartedAt).toISOString();
+      onProgress({ phase: "city-start", cityId: city.id, message: `${city.name}开始执行完整采集工作流。` });
       try {
-        const { latestRun, sourceNames } = await readCityFacts(cityRoot);
-        if (latestRun) {
-          onProgress({
-            phase: "city-facts",
-            cityId: city.id,
-            message: latestRun.summary ?? `${city.name}已生成本轮事实记录。`,
-            data: { cityRunId: latestRun.id, checkedAt: latestRun.checkedAt, metrics: latestRun.metrics ?? null, screeningMetrics: latestRun.screeningMetrics ?? null, networkPolicy: latestRun.networkPolicy ?? null },
-          });
-          if (latestRun.networkPolicy) {
-            const network = latestRun.networkPolicy;
-            onProgress({
-              phase: "network-policy",
-              cityId: city.id,
-              level: network.blocked || network.rateLimited ? "warning" : "info",
-              message: `${city.name}请求保护：${network.requests} 个逻辑请求、${network.retries} 次重试、${network.throttledWaits} 次限流等待；服务端限流 ${network.rateLimited} 次，访问控制 ${network.blocked} 次。`,
-              data: { networkPolicy: network },
-            });
-          }
-          for (const check of latestRun.sourceChecks ?? []) {
-            const sourceName = sourceNames.get(check.sourceId) ?? check.sourceId;
-            onProgress({
-              phase: "source-check",
-              level: ["unavailable", "failed", "error"].some((word) => String(check.status).includes(word)) ? "warning" : "info",
-              cityId: city.id,
-              sourceId: check.sourceId,
-              message: sourceFactMessage(check, sourceName),
-              data: {
-                status: check.status ?? null,
-                attempts: check.attempts ?? null,
-                checkedAt: check.checkedAt ?? latestRun.checkedAt ?? null,
-                collectionMetrics: check.collectionMetrics ?? null,
-                note: check.note ?? null,
-              },
-            });
-          }
+        await checkCityFolder(cityRoot);
+        onProgress({ phase: "city-workflow-start", cityId: city.id, message: `${city.name}采集脚本已启动。` });
+        const workflow = await runNode(cityRoot, ["scripts/run-full-workflow.mjs", "--full-update", "--write"], {
+          env: { RADAR_SHARED_FETCH_STATE_DIR: sharedFetchStateDir, RADAR_PERSISTENT_FETCH_CACHE_DIR: persistentFetchCacheDir },
+        });
+        if (!workflow.ok) {
+          outcome.error = conciseError(workflow);
+          onProgress({ phase: "city-failed", level: "error", cityId: city.id, message: `${city.name}采集脚本失败。`, data: { error: outcome.error, process: processDiagnostics(workflow) } });
+          return;
         }
-      } catch (factError) {
-        onProgress({ phase: "city-facts-unavailable", level: "warning", cityId: city.id, message: `${city.name}事实记录暂时无法读取。`, data: { error: factError instanceof Error ? factError.message : "未知错误" } });
-      }
-      let gatesPassed = true;
-      for (const script of cityValidationScripts) {
-        onProgress({ phase: "gate-start", cityId: city.id, message: `${city.name}开始执行门禁：${script}。`, data: { script } });
-        const gate = await runNode(cityRoot, [script]);
-        outcome.gates.push({ script, ok: gate.ok });
-        if (!gate.ok) {
-          gatesPassed = false;
-          outcome.error = `${script}：${conciseError(gate)}`;
-          onProgress({ phase: "gate-failed", level: "error", cityId: city.id, message: `${city.name}门禁失败：${script}。`, data: { script, error: outcome.error } });
-          break;
+        outcome.workflow = "completed";
+        onProgress({ phase: "city-workflow-complete", cityId: city.id, message: `${city.name}采集脚本执行完成，开始读取来源事实记录。`, data: { process: processDiagnostics(workflow) } });
+        try {
+          const { latestRun, sourceNames } = await readCityFacts(cityRoot);
+          if (latestRun) {
+            onProgress({
+              phase: "city-facts",
+              cityId: city.id,
+              message: latestRun.summary ?? `${city.name}已生成本轮事实记录。`,
+              data: { cityRunId: latestRun.id, checkedAt: latestRun.checkedAt, metrics: latestRun.metrics ?? null, screeningMetrics: latestRun.screeningMetrics ?? null, networkPolicy: latestRun.networkPolicy ?? null },
+            });
+            const performanceDiagnostics = collectorPerformanceDiagnostics(latestRun.collectorPerformance ?? []);
+            onProgress({
+              phase: "collector-performance",
+              cityId: city.id,
+              level: "info",
+              message: `${city.name}已生成 ${performanceDiagnostics.collectorCount} 个采集器的性能明细。`,
+              data: performanceDiagnostics,
+            });
+            if (latestRun.networkPolicy) {
+              const network = latestRun.networkPolicy;
+              onProgress({
+                phase: "network-policy",
+                cityId: city.id,
+                level: network.blocked || network.rateLimited ? "warning" : "info",
+                message: `${city.name}请求保护：${network.requests} 个逻辑请求、${network.attempts} 次实际外部请求、${network.sharedCacheHits || 0} 次缓存命中（其中 ${network.persistentCacheHits || 0} 次持久详情缓存命中）、${network.retries} 次重试；服务端限流 ${network.rateLimited} 次，访问控制 ${network.blocked} 次。`,
+                data: { networkPolicy: network },
+              });
+            }
+            for (const check of latestRun.sourceChecks ?? []) {
+              const sourceName = sourceNames.get(check.sourceId) ?? check.sourceId;
+              onProgress({
+                phase: "source-check",
+                level: ["unavailable", "failed", "error"].some((word) => String(check.status).includes(word)) ? "warning" : "info",
+                cityId: city.id,
+                sourceId: check.sourceId,
+                message: sourceFactMessage(check, sourceName),
+                data: sourceDiagnostics({ ...check, checkedAt: check.checkedAt ?? latestRun.checkedAt ?? null }),
+              });
+            }
+          }
+        } catch (factError) {
+          onProgress({ phase: "city-facts-unavailable", level: "warning", cityId: city.id, message: `${city.name}事实记录暂时无法读取。`, data: { error: factError instanceof Error ? factError.message : "未知错误" } });
         }
-        onProgress({ phase: "gate-passed", level: "success", cityId: city.id, message: `${city.name}门禁通过：${script}。`, data: { script } });
+        let gatesPassed = true;
+        for (const script of cityValidationScripts) {
+          onProgress({ phase: "gate-start", cityId: city.id, message: `${city.name}开始执行门禁：${script}。`, data: { script } });
+          const gate = await runNode(cityRoot, [script]);
+          outcome.gates.push({ script, ok: gate.ok, durationMs: gate.durationMs });
+          if (!gate.ok) {
+            gatesPassed = false;
+            outcome.error = `${script}：${conciseError(gate)}`;
+            onProgress({ phase: "gate-failed", level: "error", cityId: city.id, message: `${city.name}门禁失败：${script}。`, data: { script, error: outcome.error, process: processDiagnostics(gate) } });
+            break;
+          }
+          onProgress({ phase: "gate-passed", level: "success", cityId: city.id, message: `${city.name}门禁通过：${script}（${gate.durationMs} 毫秒）。`, data: { script, process: processDiagnostics(gate) } });
+        }
+        if (!gatesPassed) {
+          onProgress({ phase: "city-failed", level: "error", cityId: city.id, message: `${city.name}未通过全部门禁，本轮不导入。`, data: { error: outcome.error } });
+          return;
+        }
+        outcome.status = "ready-to-import";
+        importedIds.push(city.id);
+        onProgress({ phase: "city-ready", level: "success", cityId: city.id, message: `${city.name}采集与门禁均已完成，等待导入。` });
+      } catch (error) {
+        outcome.error = error instanceof Error ? error.message : "城市工作流异常终止";
+        onProgress({ phase: "city-failed", level: "error", cityId: city.id, message: `${city.name}工作流异常终止。`, data: { error: outcome.error } });
+      } finally {
+        outcome.completedAt = new Date().toISOString();
+        outcome.durationMs = Date.now() - cityStartedAt;
+        onProgress({
+          phase: "city-finished",
+          level: outcome.status === "ready-to-import" ? "success" : "warning",
+          cityId: city.id,
+          message: `${city.name}城市阶段结束，耗时 ${(outcome.durationMs / 1_000).toFixed(1)} 秒。`,
+          data: { status: outcome.status, durationMs: outcome.durationMs, gateCount: outcome.gates.length, error: outcome.error },
+        });
       }
-      if (!gatesPassed) {
-        onProgress({ phase: "city-failed", level: "error", cityId: city.id, message: `${city.name}未通过全部门禁，本轮不导入。`, data: { error: outcome.error } });
-        continue;
-      }
-      outcome.status = "ready-to-import";
-      importedIds.push(city.id);
-      onProgress({ phase: "city-ready", level: "success", cityId: city.id, message: `${city.name}采集与门禁均已完成，等待导入。` });
-    } catch (error) {
-      outcome.error = error instanceof Error ? error.message : "城市工作流异常终止";
-      onProgress({ phase: "city-failed", level: "error", cityId: city.id, message: `${city.name}工作流异常终止。`, data: { error: outcome.error } });
-    }
+    }));
+  } finally {
+    const cleanupStartedAt = Date.now();
+    await rm(sharedFetchStateDir, { recursive: true, force: true });
+    onProgress({ phase: "shared-fetch-cleanup", message: "共享请求缓存已清理。", data: { durationMs: Date.now() - cleanupStartedAt } });
   }
+
+  importedIds.sort((left, right) => cityIds.indexOf(left) - cityIds.indexOf(right));
 
   let imported = [];
   if (importedIds.length) {
+    const importStartedAt = Date.now();
     onProgress({ phase: "import-start", message: `开始把 ${importedIds.length} 个城市的快照导入统一数据库。`, data: { cityIds: importedIds } });
     imported = await importCityCollectors({ collectorsRoot, databasePath, cityIds: importedIds });
     for (const outcome of outcomes) {
@@ -191,7 +248,9 @@ export async function runAllCitiesSync({
         data: item,
       });
     }
+    onProgress({ phase: "import-complete", level: "success", message: `统一数据库导入完成，耗时 ${Date.now() - importStartedAt} 毫秒。`, data: { durationMs: Date.now() - importStartedAt, cityIds: importedIds, imported } });
   }
+  const retentionStartedAt = Date.now();
   const retentionDb = openRadarDatabase(databasePath);
   let retention;
   try {
@@ -203,10 +262,11 @@ export async function runAllCitiesSync({
     phase: "retention-complete",
     level: "success",
     message: `最近六个月保留规则已执行，本轮清理 ${retention.deletedOpportunities} 条过期信息。`,
-    data: retention,
+    data: { ...retention, durationMs: Date.now() - retentionStartedAt },
   });
   const completedAt = new Date().toISOString();
   const summary = {
+    startedAt: new Date(workflowStartedAt).toISOString(),
     startedCityCount: selectedCities.length,
     importedCityCount: importedIds.length,
     failedCityCount: outcomes.length - importedIds.length,
@@ -214,8 +274,9 @@ export async function runAllCitiesSync({
     imported,
     retention,
     completedAt,
+    durationMs: Date.now() - workflowStartedAt,
   };
-  onProgress({ phase: "workflow-complete", level: summary.failedCityCount ? "warning" : "success", message: `完整更新执行结束：导入 ${summary.importedCityCount} 个城市，失败 ${summary.failedCityCount} 个城市。`, data: { importedCityCount: summary.importedCityCount, failedCityCount: summary.failedCityCount } });
+  onProgress({ phase: "workflow-complete", level: summary.failedCityCount ? "warning" : "success", message: `完整更新执行结束：导入 ${summary.importedCityCount} 个城市，失败 ${summary.failedCityCount} 个城市，总耗时 ${(summary.durationMs / 1_000).toFixed(1)} 秒。`, data: { importedCityCount: summary.importedCityCount, failedCityCount: summary.failedCityCount, durationMs: summary.durationMs, outcomes: outcomes.map(({ cityId, status, durationMs, gates, error }) => ({ cityId, status, durationMs, gates, error })) } });
   return summary;
 }
 

@@ -85,16 +85,45 @@ function accessEvidence(source, result) {
   }];
 }
 
+function measuredFetch(fetchImpl, performance) {
+  const wrapped = async (...request) => {
+    const startedAt = Date.now();
+    performance.logicalRequests += 1;
+    try {
+      const response = await fetchImpl(...request);
+      performance.actualAttempts += Number(response?.collectionAttempts ?? 1);
+      if (response?.radarSharedCacheHit) performance.sharedCacheHits += 1;
+      if (response?.radarPersistentCacheHit) performance.persistentCacheHits += 1;
+      return response;
+    } catch (error) {
+      performance.actualAttempts += Number(error?.attempts || 0);
+      throw error;
+    } finally {
+      performance.requestDurationMs += Date.now() - startedAt;
+    }
+  };
+  wrapped.isResilientCollectionFetch = fetchImpl.isResilientCollectionFetch;
+  wrapped.stats = fetchImpl.stats;
+  return wrapped;
+}
+
+function completedPerformance(performance, startedAt) {
+  return { ...performance, durationMs: Date.now() - startedAt };
+}
+
 export async function collectPublicExamWorkflowSources({ registry, recipes, fetchImpl = fetch } = {}) {
   const recipeBySource = new Map(recipes.recipes.map((recipe) => [recipe.sourceId, recipe]));
   const sources = registry.sources.filter((source) => SUPPORTED.has(source.id) && recipeBySource.get(source.id)?.collection?.primary === "script");
   const outcomes = [];
   for (const source of sources) {
+    const startedAt = Date.now();
+    const performance = { logicalRequests: 0, actualAttempts: 0, sharedCacheHits: 0, persistentCacheHits: 0, requestDurationMs: 0 };
+    const sourceFetch = measuredFetch(fetchImpl, performance);
     try {
-      let result = await collectPublicExam({ sourceId: source.id, fetchImpl });
+      let result = await collectPublicExam({ sourceId: source.id, fetchImpl: sourceFetch });
       const candidates = activeCampaignNotices(result);
       if (candidates.some((notice) => notice.lifecycle?.status === "open-or-upcoming")) {
-        result = await collectPublicExam({ sourceId: source.id, fetchImpl, parseTables: true });
+        result = await collectPublicExam({ sourceId: source.id, fetchImpl: sourceFetch, parseTables: true });
       }
       const currentCandidates = activeCampaignNotices(result);
       const undatedCampaigns = campaignNotices(result).filter((notice) => notice.lifecycle?.status === "unknown");
@@ -125,6 +154,7 @@ export async function collectPublicExamWorkflowSources({ registry, recipes, fetc
               ? "公告入口可访问，但详情、附件或职位表未完整解析，不能把结果理解为 0 条。"
               : "官方公告与附件 → 仍在有效期内、可继续资格判断的公告",
           },
+          performance: completedPerformance(performance, startedAt),
           accessEvidence: accessEvidence(source, result)
         }
       });
@@ -145,6 +175,7 @@ export async function collectPublicExamWorkflowSources({ registry, recipes, fetc
             afterFilter: null,
             filterDescription: "官方采集路径本轮不可用，未生成可比较的候选数量。",
           },
+          performance: completedPerformance(performance, startedAt),
           accessEvidence: [source.collectionEntryUrl || source.entryUrl, ...(source.alternateEntryUrls || [])].map((requestedUrl) => ({
             requestedUrl,
             outcome: "network-error",
