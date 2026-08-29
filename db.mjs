@@ -173,7 +173,10 @@ const directProfessionalQualificationPattern = /(专业不限|不限专业|不�
 // Broad terms must be complete qualification tokens.  Without boundaries,
 // “软件工程类” accidentally matched the trailing “工程类” and was treated as
 // if every engineering major were accepted.
-const broadProfessionalQualificationPattern = /(?:^|[；;、，,\s/（(])(?:工学(?:门类|全类|大类|类|专业)?|所有工学|理工(?:科|类|专业|背景|方向)|工程(?:类|门类|学科))(?=$|[；;、，,\s/）)及等])/;
+// Parenthesized discipline labels such as “力学类（工学）” describe the
+// listed major itself; they do not mean that every engineering major may
+// apply.  A broad scope therefore needs a real list/text boundary before it.
+const broadProfessionalQualificationPattern = /(?:^|[；;、，,\s/])(?:工学(?:门类|全类|大类|类|专业)?|所有工学|理工(?:(?:科类|科|类)(?:相关)?专业?|专业|背景|方向)|工程(?:类|门类|学科))(?=$|[；;、，,\s/）)及等])/;
 const professionalExclusionPattern = /(生物医学工程|生物医工|医学工程)(?:专业)?(?:除外|不(?:予|可|得)?报考|不接受|不招收)/;
 const pureComputingRolePattern = /(网络安全|信息安全|前端|后端|软件(?:开发|工程师|工程)|算法工程师|人工智能工程师|AI工程师|大模型|云计算|数据(?:开发|工程师)|程序员)/i;
 const biomedicalRoleBridgePattern = /(生物医学|医疗器械|医疗设备|医学影像|临床工程|体外诊断|IVD|生物信号|医学数据|智慧医疗|医疗软件|健康科技|生命科学)/i;
@@ -306,6 +309,9 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
   assertAnonymousPayload(opportunities, "opportunities");
   assertAnonymousPayload(registry, "sourceRegistry");
   assertAnonymousPayload(reviewLog, "reviewLog");
+  const disabledOpportunitySourceIds = new Set((registry.sources ?? [])
+    .filter((source) => source.monitoringEnabled === false && source.shortcutEnabled === false)
+    .map((source) => source.id));
 
   const insertCity = db.prepare(`
     INSERT INTO cities (id, name, accent, description, updated_at)
@@ -360,6 +366,7 @@ export function replaceCitySnapshot(db, { cityId, opportunities, registry, revie
     for (const [recordType, items] of [["job", opportunities.jobs ?? []], ["candidate", opportunities.candidates ?? []], ["monitor", opportunities.monitors ?? []]]) {
       for (const item of items) {
         if (!isOpportunityWithinRetention(item, { now: new Date(importedAt) })) continue;
+        if (item.sourceId && disabledOpportunitySourceIds.has(item.sourceId)) continue;
         if (recordType === "job" && !isPubliclyDisplayableOpportunity(item)) continue;
         if (recordType === "candidate" && !isProfileRelevantOpportunity(item)) continue;
         const row = opportunityRow(cityId, item, recordType);

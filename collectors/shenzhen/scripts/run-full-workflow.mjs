@@ -225,6 +225,7 @@ function candidateFromDiscoveryLead(lead, sourceId, checkedAt) {
       automaticResult: hasDirectLink ? "已保留平台提供的直达链接，不把它自动视为官方核验。" : "平台未返回可验证的单位直达链接，脚本不会猜测或搜索拼接官网。"
     },
     collectionEvidence: lead.evidence,
+    professionalEligibility: lead.professionalEligibility || null,
     tags: [sourceTag, lead.employerNature || "平台未注明单位性质", "应届生", "专业条件可报", hasDirectLink ? "平台提供投递链接" : "需手动确认"]
   };
 }
@@ -419,7 +420,10 @@ async function main() {
   opportunities.meta.lastIncompleteSourceCount = incomplete;
   opportunities.meta.lastDeferredCandidateCount = run.screeningMetrics.positionsDeferredByBudget;
   const structuredSourceIds = new Set(structuredResults.keys());
-  const otherJobs = (opportunities.jobs || []).filter((job) => !structuredSourceIds.has(job.sourceId));
+  const disabledSourceIds = new Set([...sources.values()]
+    .filter((source) => source.monitoringEnabled === false && source.shortcutEnabled === false)
+    .map((source) => source.id));
+  const otherJobs = (opportunities.jobs || []).filter((job) => !structuredSourceIds.has(job.sourceId) && !disabledSourceIds.has(job.sourceId));
   const refreshedStructuredJobs = [...structuredResults.values()].flatMap((result) => result.collectionError
     ? (opportunities.jobs || []).filter((job) => job.sourceId === result.sourceId)
     : result.jobs);

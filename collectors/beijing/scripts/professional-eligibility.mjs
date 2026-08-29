@@ -9,7 +9,10 @@ const EXPLICIT_EXCLUSION = /(生物医学工程|生物医工|医学工程)(?:专
 const OPEN_MAJOR = /(专业不限|不限专业|不限制专业|专业不作限制|可不限专业|不设专业限制|不限所学专业)/i;
 const EXACT_MAJOR = /(生物医学工程|生物医工|医学工程|医疗器械工程|临床工程|医疗电子|医学影像工程)/i;
 const ADJACENT_MAJOR = /(生物工程|生物技术|生物医药|生命科学|生物科学|生物类|医疗器械(?:类|工程|相关专业)?)/i;
-const BROAD_ENGINEERING = /(?:^|[；;、，,\s/（(])(?:工学(?:门类|全类|大类|类|专业)?|所有工学|理工(?:科|类|专业|背景|方向)|工程(?:类|门类|学科))(?=$|[；;、，,\s/）)及等])/i;
+// “力学类（工学）” only labels 力学 as an engineering discipline; it is
+// not evidence that all engineering majors are accepted.  Do not let an
+// opening parenthesis act as the left boundary of a broad eligibility token.
+const BROAD_ENGINEERING = /(?:^|[；;、，,\s/])(?:工学(?:门类|全类|大类|类|专业)?|所有工学|理工(?:(?:科类|科|类)(?:相关)?专业?|专业|背景|方向)|工程(?:类|门类|学科))(?=$|[；;、，,\s/）)及等])/i;
 const HEALTH_ROLE = /(医疗器械|医疗设备|医用耗材|医学影像|临床工程|体外诊断|生物信号|医疗健康|智慧医疗|医学数据|生物医药|生命科学|健康科技)/i;
 const PURE_COMPUTING_ROLE = /(网络安全|信息安全|前端|后端|软件(?:开发|工程师|工程)|算法工程师|人工智能工程师|AI工程师|大模型|云计算|数据(?:开发|工程师)|程序员)/i;
 const BIOMEDICAL_ROLE_BRIDGE = /(生物医学|医疗器械|医疗设备|医学影像|临床工程|体外诊断|IVD|生物信号|医学数据|智慧医疗|医疗软件|健康科技|生命科学)/i;

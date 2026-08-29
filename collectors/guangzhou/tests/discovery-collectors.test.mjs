@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { collectBuaaDiscovery } from "../scripts/collect-buaa-discovery.mjs";
+import { evaluateProfessionalEligibility } from "../scripts/professional-eligibility.mjs";
 import { collectIGuopinDiscovery } from "../scripts/collect-iguopin-discovery.mjs";
 import { collectNCSSDiscovery } from "../scripts/collect-ncss-discovery.mjs";
 
@@ -137,4 +138,9 @@ test("国家大学生就业服务平台按专业资格保留岗位并继续排�
   assert.equal(result.detailOutcomes["pure-computing-role-mismatch"], 1);
   assert.equal(result.detailOutcomes["employer-nature-mismatch"], 1);
   assert.equal(listRequests.length, 6);
+});
+test("括号中的工学学科归属不会冒充整个工学门类可报", () => {
+  assert.equal(evaluateProfessionalEligibility("力学类（工学）；仪器类；自动化类").eligible, false);
+  assert.equal(evaluateProfessionalEligibility("工学全类").eligible, true);
+  assert.equal(evaluateProfessionalEligibility("理工科类相关专业").eligible, true);
 });

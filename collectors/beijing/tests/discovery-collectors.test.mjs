@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { collectBuaaDiscovery } from "../scripts/collect-buaa-discovery.mjs";
+import { evaluateProfessionalEligibility } from "../scripts/professional-eligibility.mjs";
 import { collectIGuopinDiscovery, DISCOVERY_KEYWORDS as IGUOPIN_KEYWORDS } from "../scripts/collect-iguopin-discovery.mjs";
 import { collectNCSSDiscovery, DISCOVERY_KEYWORDS as NCSS_KEYWORDS } from "../scripts/collect-ncss-discovery.mjs";
 
@@ -159,4 +160,9 @@ test("国家大学生就业服务平台识别公开分页上限后不对每个�
   assert.equal(result.queries[0].pagesRead, 5);
   assert.ok(result.queries.slice(1).every((query) => query.pagesRead === 5));
   assert.match(result.partialReason, /第 6 页要求登录/);
+});
+test("括号中的工学学科归属不会冒充整个工学门类可报", () => {
+  assert.equal(evaluateProfessionalEligibility("力学类（工学）；仪器类；自动化类").eligible, false);
+  assert.equal(evaluateProfessionalEligibility("工学全类").eligible, true);
+  assert.equal(evaluateProfessionalEligibility("理工科类相关专业").eligible, true);
 });

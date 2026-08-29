@@ -62,6 +62,12 @@ test("publishes eligible biomedical roles without mistaking computing discipline
   assert.equal(isProfileRelevantOpportunity({
     track: "待确认线索", title: "设备工程师", majors: "工学门类；理工类",
   }), true);
+  assert.equal(isProfileRelevantOpportunity({
+    track: "待确认线索", title: "雷达结构控制设计", majors: "力学类（工学）；仪器类；自动化类",
+  }), false);
+  assert.equal(isProfileRelevantOpportunity({
+    track: "待确认线索", title: "项目管理", majors: "理工科类相关专业",
+  }), true);
   assert.equal(normalizePublicLocation("北京市大兴区；北京市；北京市大兴区；北京市"), "北京市大兴区");
 });
 
@@ -208,6 +214,7 @@ test("imports all four cities and exposes the unified public API", async (t) => 
   assert.equal(jobs.response.status, 200);
   assert.ok(jobs.body.opportunities.every((item) => item.track === "央国企"));
   assert.ok(jobs.body.opportunities.every(isPubliclyDisplayableOpportunity));
+  assert.ok(!jobs.body.opportunities.some((item) => item.sourceId === "chinatelecom-careers"));
 
   const announcements = await request(base, "/api/cities/beijing/opportunities?kind=monitor");
   assert.equal(announcements.response.status, 200);
