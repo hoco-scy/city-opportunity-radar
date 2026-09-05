@@ -23,6 +23,10 @@ function shanghaiMinute(now = new Date()) {
 function lines(value) { return clean(value).split(/\n+(?=\d+[.、]\s*)|\n+/).map(clean).filter(Boolean); }
 function codeFromTitle(value, fallback) { return clean(value).match(/\((J\d+)\)/i)?.[1]?.toUpperCase() || String(fallback); }
 function shortTitle(value) { return clean(value).replace(/\((J\d+)\).*$/i, "").replace(/^【[^】]+】/, "") || "具体岗位"; }
+function officialDetailId(row) {
+  const id = String(row?.Id || "").trim();
+  return /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id) ? id : "";
+}
 function majorLines(requirement) { const selected = lines(requirement).filter((item) => /专业|学科|工学|理工|医学|生物|不限/.test(item)); return selected.join("；") || clean(requirement); }
 function educationText(requirement) { return lines(requirement).find((item) => /(本科|硕士|研究生|博士|学历)/.test(item)) || "官方任职条件未单列学历"; }
 function retryDelay(attempt) { return new Promise((resolve) => setTimeout(resolve, attempt * 250)); }
@@ -77,6 +81,8 @@ export function classifyBoeRow(row, city, checkedAt) {
   if (!eligibility.eligible) return { outcome: `professional-${eligibility.basis}`, reason: eligibility.reason };
   const roleText = clean(`${row.JobAdName} ${row.Duty}`);
   if (!roleIsProfileRelevant(roleText)) return { outcome: "pure-computing-role-mismatch" };
+  const detailId = officialDetailId(row);
+  if (!detailId) return { outcome: "invalid-detail-id" };
   const jobCode = codeFromTitle(row.JobAdName, row.JobAdId);
   const risks = objectiveRiskFlags(roleText);
   const priority = rankProfessionalOpportunity(eligibility, roleText);
@@ -92,7 +98,7 @@ export function classifyBoeRow(row, city, checkedAt) {
     deadline, deadlineType: /^\d{4}-\d{2}-\d{2}$/.test(deadline) ? "官方岗位截止日" : "动态截止", status: "招聘中",
     priority, matchLevel: level, matchReason: `${eligibility.reason}（命中“${eligibility.evidence}”）；已排除无生物医学交叉的纯计算机岗位，其他岗位内容只影响排序。`,
     riskNotes: risks.length ? [`官方职责出现客观工作强度/环境提示：${risks.join("、")}`] : [], tags: [city, eligibility.evidence, level].filter(Boolean),
-    sourceId: "boe-campus", officialAnnouncementUrl: ENTRY_URL, officialApplyUrl: `${ORIGIN}/15/detail?jobAdId=${encodeURIComponent(row.JobAdId)}&hideMenu=1`,
+    sourceId: "boe-campus", officialAnnouncementUrl: ENTRY_URL, officialApplyUrl: `${ORIGIN}/custom/xzxq?hideMenu=1&jobAdId=${encodeURIComponent(detailId)}`,
     applyInstruction: `打开京东方官方岗位页并核对职位代码 ${jobCode}`, verifiedAt: checkedAt, lastSeenAt: checkedAt, lastSeenStatus: "live",
     statusEvidence: "京东方官方校园招聘接口按招聘分类和工作地点返回的在招岗位。", professionalEligibility: eligibility,
     verifiedFields: ["职位代码", "单位", "地点", "学历", "专业", "职责", "投递路径", "截止口径"],

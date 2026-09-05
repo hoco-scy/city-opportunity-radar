@@ -23,6 +23,10 @@ function shanghaiMinute(now = new Date()) {
 }
 function lines(value) { return clean(value).split(/\n+(?=\d+[.、]\s*)|\n+/).map(clean).filter(Boolean); }
 function codeFromTitle(value, fallback) { return clean(value).match(/\((J\d+)\)/i)?.[1]?.toUpperCase() || String(fallback); }
+function officialDetailId(row) {
+  const id = String(row?.Id || "").trim();
+  return /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id) ? id : "";
+}
 function shortTitle(value) {
   const title = clean(value).replace(/\((J\d+)\).*$/i, "").replace(/-?(?:202\d届)?(?:校园招聘|校招).*$/i, "");
   const parts = title.split("-").map(clean).filter(Boolean);
@@ -83,10 +87,12 @@ export function classifyPiccRow(row, city, checkedAt) {
   if (!eligibility.eligible) return { outcome: `professional-${eligibility.basis}`, reason: eligibility.reason };
   const roleText = clean(`${row.JobAdName} ${row.Duty}`);
   if (!roleIsProfileRelevant(roleText)) return { outcome: "pure-computing-role-mismatch" };
+  const detailId = officialDetailId(row);
+  if (!detailId) return { outcome: "invalid-detail-id" };
   const priority = rankProfessionalOpportunity(eligibility, roleText);
   const jobCode = codeFromTitle(row.JobAdName, row.JobAdId);
   const risks = objectiveRiskFlags(roleText);
-  const detailUrl = `${ORIGIN}/campus/detail?jobAdId=${encodeURIComponent(row.JobAdId)}`;
+  const detailUrl = `${ORIGIN}/campus/detail?jobAdId=${encodeURIComponent(detailId)}`;
   const level = matchLevelForPriority(priority, eligibility);
   return { outcome: "accepted", job: {
     id: `picc-${jobCode.toLowerCase()}`, track: "央国企", subtrack: "金融央企", organization: clean(row.Org) || "中国人民保险集团",
